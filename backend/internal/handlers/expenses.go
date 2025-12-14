@@ -133,13 +133,13 @@ func (h *ExpensesHandler) CreateForGroup(c *gin.Context) {
 	}
 
 	title := strings.TrimSpace(req.Title)
-	if title == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "title is required"})
+	if err := ValidateTitle(title); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if req.Amount <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "amount must be > 0"})
+	if err := ValidateAmount(req.Amount); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	amountCents := moneyToCents(req.Amount)

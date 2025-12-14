@@ -92,8 +92,8 @@ func (h *GroupsHandler) Create(c *gin.Context) {
 	}
 
 	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+	if err := ValidateGroupName(name); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 

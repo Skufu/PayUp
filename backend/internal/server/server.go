@@ -14,9 +14,10 @@ import (
 )
 
 type Deps struct {
-	Pool   *pgxpool.Pool
-	Q      *sqlcdb.Queries
-	Issuer auth.Issuer
+	Pool           *pgxpool.Pool
+	Q              *sqlcdb.Queries
+	Issuer         auth.Issuer
+	GoogleClientID string
 }
 
 // New constructs the HTTP router for the PayUp API.
@@ -30,11 +31,19 @@ func New(deps Deps) *gin.Engine {
 	}
 
 	r := gin.New()
-	// Request logs with colored status codes (200 green, 404 red, etc.).
-	// Note: this is separate from Gin debug mode; release mode still supports logging.
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
-	r.Use(middleware.CORS())
+
+	// SECURITY MIDDLEWARE (ORDER MATTERS!)
+	r.Use(gin.Recovery())                // 1. Panic recovery first
+	r.Use(middleware.CORS())             // 2. CORS before other handlers
+	r.Use(middleware.SecurityHeaders())  // 3. Security headers on all responses
+	r.Use(middleware.RateLimit())        // 4. General rate limiting
+	r.Use(middleware.StructuredLogger()) // 5. Request logging
+	r.Use(gin.Logger())                  // 6. Gin's built-in logger for dev
+
+	// HTTPS enforcement in production
+	if os.Getenv("GIN_MODE") == "release" {
+		r.Use(middleware.EnforceHTTPS())
+	}
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -48,11 +57,14 @@ func New(deps Deps) *gin.Engine {
 
 	v1 := r.Group("/v1")
 	{
-		ah := &handlers.AuthHandler{Q: deps.Q, Issuer: deps.Issuer, UploadService: uploadSvc}
+		ah := &handlers.AuthHandler{Q: deps.Q, Issuer: deps.Issuer, UploadService: uploadSvc, GoogleClientID: deps.GoogleClientID}
+		// Auth routes with stricter rate limiting
 		authGroup := v1.Group("/auth")
+		authGroup.Use(middleware.AuthRateLimit())
 		authGroup.POST("/register", ah.Register)
 		authGroup.POST("/login", ah.Login)
 		authGroup.POST("/refresh", ah.Refresh)
+		authGroup.POST("/google", ah.GoogleAuth)
 		authGroup.GET("/me", auth.Middleware(deps.Issuer), ah.Me)
 		authGroup.PATCH("/profile", auth.Middleware(deps.Issuer), ah.UpdateProfile)
 
@@ -75,11 +87,14 @@ func New(deps Deps) *gin.Engine {
 		v1.GET("/groups/:id/balances", auth.Middleware(deps.Issuer), bh.GetByGroup)
 
 		ph := &handlers.PaymentsHandler{Pool: deps.Pool, Q: deps.Q, UploadService: uploadSvc}
-		v1.POST("/payments", auth.Middleware(deps.Issuer), ph.Create)
-		v1.GET("/payments", auth.Middleware(deps.Issuer), ph.List)
-		v1.PATCH("/payments/:id/approve", auth.Middleware(deps.Issuer), ph.Approve)
-		v1.PATCH("/payments/:id/reject", auth.Middleware(deps.Issuer), ph.Reject)
-		v1.POST("/payments/upload-proof", auth.Middleware(deps.Issuer), ph.UploadProof)
+		// Payments with stricter rate limiting
+		payments := v1.Group("/payments", auth.Middleware(deps.Issuer))
+		payments.Use(middleware.PaymentRateLimit())
+		payments.POST("", ph.Create)
+		payments.GET("", ph.List)
+		payments.PATCH("/:id/approve", ph.Approve)
+		payments.PATCH("/:id/reject", ph.Reject)
+		payments.POST("/upload-proof", ph.UploadProof)
 
 		nh := &handlers.NudgesHandler{Pool: deps.Pool, Q: deps.Q}
 		nudges := v1.Group("/nudges", auth.Middleware(deps.Issuer))

@@ -110,6 +110,15 @@ type Nudge struct {
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 }
 
+type OauthAccount struct {
+	ID         pgtype.UUID        `json:"id"`
+	UserID     pgtype.UUID        `json:"user_id"`
+	Provider   string             `json:"provider"`
+	ProviderID string             `json:"provider_id"`
+	Email      *string            `json:"email"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type Payment struct {
 	ID         pgtype.UUID        `json:"id"`
 	GroupID    pgtype.UUID        `json:"group_id"`
@@ -136,7 +145,7 @@ type PushSubscription struct {
 type User struct {
 	ID           pgtype.UUID        `json:"id"`
 	Email        string             `json:"email"`
-	PasswordHash string             `json:"password_hash"`
+	PasswordHash *string            `json:"password_hash"`
 	Name         *string            `json:"name"`
 	AvatarUrl    *string            `json:"avatar_url"`
 	QrUrl        *string            `json:"qr_url"`

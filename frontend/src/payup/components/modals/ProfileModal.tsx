@@ -16,12 +16,26 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
   const [name, setName] = useState(currentUser.name)
   const [qrFile, setQrFile] = useState<File | null>(null)
   const [qrPreview, setQrPreview] = useState<string>(currentUser.qr)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   const hasQR = useMemo(() => !!(qrPreview && qrPreview.trim()), [qrPreview])
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    if (file.size > 5 * 1024 * 1024) return
+    setAvatarFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setAvatarPreview(String(reader.result ?? ''))
+    reader.readAsDataURL(file)
+  }
 
   if (!isOpen) return null
 
@@ -38,13 +52,28 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
           </button>
           <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
             <div
-              className={`w-24 h-24 rounded-full ${currentUser.color} flex items-center justify-center text-4xl font-bold text-black border-[6px] border-[#131316] shadow-xl`}
+              className={`w-24 h-24 rounded-full ${avatarPreview ? '' : currentUser.color} flex items-center justify-center text-4xl font-bold text-black border-[6px] border-[#131316] shadow-xl overflow-hidden cursor-pointer`}
+              onClick={() => avatarInputRef.current?.click()}
             >
-              {currentUser.avatar}
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Avatar preview" className="w-full h-full object-cover" />
+              ) : (
+                currentUser.avatar
+              )}
             </div>
-            <button className="absolute bottom-0 right-0 p-1.5 bg-[#dfff4f] rounded-full text-black hover:scale-110 transition-transform shadow-lg border border-[#131316]">
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              className="absolute bottom-0 right-0 p-1.5 bg-[#dfff4f] rounded-full text-black hover:scale-110 transition-transform shadow-lg border border-[#131316]"
+            >
               <Camera size={14} />
             </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
           </div>
         </div>
 
@@ -133,15 +162,11 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
               
               const doSave = async () => {
                 try {
-                  console.log('[ProfileModal] Saving name:', name)
-                  const result = await api.updateProfile(name, qrFile ?? undefined)
-                  console.log('[ProfileModal] API response:', result)
+                  await api.updateProfile(name, qrFile ?? undefined, avatarFile ?? undefined)
                   await onUpdateProfile()
-                  console.log('[ProfileModal] Profile refreshed')
                   setSuccess(true)
                   setTimeout(() => onClose(), 800)
                 } catch (ex: unknown) {
-                  console.error('[ProfileModal] Error:', ex)
                   const apiErr = ex as ApiError
                   setError(apiErr?.message || (ex instanceof Error ? ex.message : 'Failed to update profile'))
                 } finally {

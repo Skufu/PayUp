@@ -3,6 +3,11 @@ INSERT INTO users (email, password_hash, name)
 VALUES ($1, $2, $3)
 RETURNING id, email, name, avatar_url, qr_url, created_at, updated_at;
 
+-- name: CreateOAuthUser :one
+INSERT INTO users (email, name, avatar_url)
+VALUES ($1, $2, $3)
+RETURNING id, email, name, avatar_url, qr_url, created_at, updated_at;
+
 -- name: GetUserByEmail :one
 SELECT id, email, password_hash, name, avatar_url, qr_url, created_at, updated_at
 FROM users
@@ -18,6 +23,7 @@ UPDATE users
 SET
   name = COALESCE($2, name),
   qr_url = COALESCE($3, qr_url),
+  avatar_url = COALESCE($4, avatar_url),
   updated_at = NOW()
 WHERE id = $1;
 

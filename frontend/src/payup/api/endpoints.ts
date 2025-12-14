@@ -23,16 +23,21 @@ export const api = {
       body: JSON.stringify({ email, password }),
     })
   },
+  googleAuth(idToken: string) {
+    return apiRequest<{ user: AuthUser; token: { accessToken: string; refreshToken: string } }>(`/v1/auth/google`, {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
+    })
+  },
   me() {
     return apiRequest<AuthUser>(`/v1/auth/me`)
   },
 
-  updateProfile(name?: string, paymentQRFile?: File) {
+  updateProfile(name?: string, paymentQRFile?: File, avatarFile?: File) {
     const form = new FormData()
     if (name && name.trim()) form.append('name', name.trim())
     if (paymentQRFile) form.append('payment_qr', paymentQRFile)
-    console.log('[API] updateProfile - sending name:', name, 'trimmed:', name?.trim())
-    console.log('[API] updateProfile - FormData entries:', Array.from(form.entries()))
+    if (avatarFile) form.append('avatar', avatarFile)
     return apiRequest<{ message: string }>(`/v1/auth/profile`, { method: 'PATCH', body: form })
   },
 

@@ -53,9 +53,10 @@ func main() {
 	srv := &http.Server{
 		Addr: ":" + cfg.Port,
 		Handler: server.New(server.Deps{
-			Pool:   pool,
-			Q:      q,
-			Issuer: issuer,
+			Pool:           pool,
+			Q:              q,
+			Issuer:         issuer,
+			GoogleClientID: cfg.GoogleClientID,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}

@@ -1,5 +1,5 @@
-import { Bell, Check, CheckCheck, Clock, Eye, Smartphone, Wallet, X } from 'lucide-react'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowRight, Bell, Camera, Check, CheckCheck, Clock, Eye, Receipt, Smartphone, Upload, Wallet, X } from 'lucide-react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { MOCK_PROOF_URL } from '../mock/data'
@@ -145,6 +145,11 @@ export const NotificationView = memo(function NotificationView({ payments, curre
         <NudgePayModal
           nudge={selectedNudge}
           onClose={() => setSelectedNudge(null)}
+          onPaymentComplete={async () => {
+            await qc.invalidateQueries({ queryKey: ['payments'] })
+            await qc.invalidateQueries({ queryKey: ['nudges'] })
+            setSelectedNudge(null)
+          }}
         />
       )}
 
@@ -308,41 +313,73 @@ const PaymentProofModal = memo(function PaymentProofModal({
   )
 })
 
-// Modal to show nudger's QR code for payment
+// Modal to show nudger's QR code and handle payment with proof upload
 const NudgePayModal = memo(function NudgePayModal({
   nudge,
   onClose,
+  onPaymentComplete,
 }: {
   nudge: Nudge
   onClose: () => void
+  onPaymentComplete: () => void
 }) {
-  const [status, setStatus] = useState<'loading' | 'ready'>('loading')
+  const [step, setStep] = useState<'loading' | 'scan' | 'upload' | 'verifying'>('loading')
   const [qrUrl, setQrUrl] = useState<string>('')
+  const [proofFile, setProofFile] = useState<File | null>(null)
+  const [proofPreview, setProofPreview] = useState<string>('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setStatus('loading')
+    setStep('loading')
     api
       .getUserPublicProfile(nudge.senderId)
       .then((p) => {
         setQrUrl(p.qrUrl ?? '')
-        setStatus('ready')
+        setStep('scan')
       })
       .catch(() => {
         setQrUrl('')
-        setStatus('ready')
+        setStep('scan')
       })
   }, [nudge.senderId])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    if (file.size > 10 * 1024 * 1024) return
+    setProofFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setProofPreview(String(reader.result ?? ''))
+    reader.readAsDataURL(file)
+  }
+
+  const handleSubmitPayment = async () => {
+    if (!proofFile) return
+    setStep('verifying')
+    try {
+      const uploaded = await api.uploadPaymentProof(proofFile)
+      await api.createPayment(nudge.groupId, nudge.senderId, nudge.amount, uploaded.proofUrl)
+      setTimeout(() => {
+        onPaymentComplete()
+      }, 2500)
+    } catch {
+      setStep('upload')
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} />
       <div className="relative w-full max-w-xs bg-[#131316] rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl animate-slide-up">
-        {status === 'loading' ? (
-          <div className="p-8 flex flex-col items-center justify-center h-[400px]">
+        {step === 'loading' && (
+          <div className="p-8 flex flex-col items-center justify-center h-[520px]">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-white/10 border-t-[#dfff4f] mb-4" />
             <p className="text-sm text-gray-400">Loading QR code...</p>
           </div>
-        ) : (
+        )}
+
+        {step === 'scan' && (
           <div className="p-8 flex flex-col items-center text-center">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 to-[#dfff4f]" />
             <button
@@ -373,9 +410,14 @@ const NudgePayModal = memo(function NudgePayModal({
               </div>
             )}
 
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider max-w-[200px]">
-              Scan with GCash or Maya to pay
-            </p>
+            <p className="text-[10px] text-gray-500 mb-4 uppercase tracking-wider">Scan with GCash or Maya to pay</p>
+
+            <button
+              onClick={() => setStep('upload')}
+              className="w-full bg-[#3b82f6] text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20"
+            >
+              <Camera size={18} /> I Have Paid
+            </button>
 
             <div className="mt-4 flex justify-center gap-4">
               <div className="flex items-center gap-2 text-gray-500 text-xs">
@@ -385,6 +427,91 @@ const NudgePayModal = memo(function NudgePayModal({
                 <div className="w-3 h-3 rounded-full bg-gray-500" /> <span>Maya</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {step === 'upload' && (
+          <div className="p-8 flex flex-col items-center text-center h-[520px] justify-center relative">
+            <button
+              onClick={() => setStep('scan')}
+              className="absolute top-6 left-6 text-gray-500 hover:text-white transition-colors"
+            >
+              <ArrowRight className="rotate-180" size={20} />
+            </button>
+            <button
+              onClick={onClose}
+              className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <h3 className="font-display text-lg font-bold text-white mb-2">Upload Payment Proof</h3>
+            <p className="text-xs text-gray-500 font-mono mb-6">
+              ₱{nudge.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })} to {nudge.senderName}
+            </p>
+
+            {proofPreview ? (
+              <div className="relative w-full mb-6">
+                <img src={proofPreview} alt="Payment proof" className="w-full rounded-2xl border border-white/10" />
+                <button
+                  onClick={() => {
+                    setProofFile(null)
+                    setProofPreview('')
+                  }}
+                  className="absolute top-2 right-2 p-2 bg-red-500/90 rounded-lg"
+                >
+                  <X size={16} className="text-white" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full h-56 border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center mb-6 hover:border-[#dfff4f] hover:bg-white/5 transition-all cursor-pointer group"
+              >
+                <div className="w-16 h-16 rounded-full bg-[#1c1c21] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Receipt className="text-gray-500 group-hover:text-[#dfff4f]" size={28} />
+                </div>
+                <span className="text-sm text-gray-500 font-mono">Tap to upload receipt</span>
+                <span className="text-xs text-gray-600 mt-1">JPG/PNG/WEBP, max 10MB</span>
+              </button>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+
+            <button
+              disabled={!proofFile}
+              onClick={handleSubmitPayment}
+              className="w-full bg-[#dfff4f] text-black font-bold py-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="flex items-center justify-center gap-2">
+                <Upload size={18} /> SUBMIT PROOF
+              </span>
+            </button>
+          </div>
+        )}
+
+        {step === 'verifying' && (
+          <div className="p-8 flex flex-col items-center text-center h-[520px] justify-center bg-[#dfff4f] relative overflow-hidden">
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 p-2 bg-black/10 hover:bg-black/20 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center mb-6 animate-bounce shadow-2xl relative z-10">
+              <Check size={40} className="text-[#dfff4f]" strokeWidth={4} />
+            </div>
+            <h3 className="font-display text-3xl font-bold text-black relative z-10">Sent!</h3>
+            <p className="text-black/70 mt-2 font-mono text-sm max-w-[200px] leading-tight relative z-10">
+              Wait for {nudge.senderName} to confirm receipt.
+            </p>
           </div>
         )}
       </div>

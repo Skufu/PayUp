@@ -84,3 +84,22 @@ func (s *UploadService) UploadPaymentProof(ctx context.Context, file multipart.F
 	}
 	return result.SecureURL, nil
 }
+
+// UploadAvatar uploads the user's profile avatar image.
+func (s *UploadService) UploadAvatar(ctx context.Context, file multipart.File, filename string, userID string) (string, error) {
+	if err := validateImageExt(filename); err != nil {
+		return "", err
+	}
+
+	result, err := s.cld.Upload.Upload(ctx, file, uploader.UploadParams{
+		Folder:    "payup/avatars",
+		PublicID:  fmt.Sprintf("avatar_%s", userID),
+		Overwrite: boolPtr(true),
+		// Crop to square for avatar, with face detection.
+		Transformation: "c_fill,g_face,w_400,h_400,q_auto:good",
+	})
+	if err != nil {
+		return "", err
+	}
+	return result.SecureURL, nil
+}

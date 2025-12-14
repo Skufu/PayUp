@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Icon } from '@iconify/react'
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 
 import type { ApiError } from '../../api/client'
 import { useAuth } from '../../auth/useAuth'
@@ -9,7 +10,7 @@ import { PWAInstallGuide } from '../../components/PWAInstallGuide'
 import { markPWAGuideAsShown, useShouldShowPWAGuide } from '../../pwa/pwaGuide'
 
 export function RegisterPage() {
-  const { register } = useAuth()
+  const { register, googleLogin } = useAuth()
   const nav = useNavigate()
 
   const [name, setName] = useState('')
@@ -26,6 +27,24 @@ export function RegisterPage() {
     markPWAGuideAsShown()
     setShowingPWAGuide(false)
   }, [])
+
+  const handleGoogleSuccess = useCallback(async (response: CredentialResponse) => {
+    if (!response.credential) {
+      setErr('Google login failed - no credential')
+      return
+    }
+    setErr(null)
+    setBusy(true)
+    try {
+      await googleLogin(response.credential)
+      nav('/app', { replace: true })
+    } catch (ex: unknown) {
+      const apiErr = ex as ApiError
+      setErr(apiErr?.message || (ex instanceof Error ? ex.message : 'Google login failed'))
+    } finally {
+      setBusy(false)
+    }
+  }, [googleLogin, nav])
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -146,17 +165,29 @@ export function RegisterPage() {
             )}
           </button>
 
-          {/* Social login placeholders (to be implemented later) */}
+          {/* Social login */}
+          <div className="relative pt-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-[#131316] px-4 text-gray-500 uppercase tracking-widest">Or sign up with</span>
+            </div>
+          </div>
+
+          <div className="pt-4 flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setErr('Google sign-in failed')}
+              theme="filled_black"
+              shape="pill"
+              size="large"
+              text="signup_with"
+              width="300"
+            />
+          </div>
+
           <div className="grid grid-cols-1 gap-3 pt-2">
-            <button
-              type="button"
-              disabled
-              className="w-full bg-white/5 border border-white/10 text-white/60 font-bold text-xs uppercase tracking-widest py-4 rounded-xl flex items-center justify-center gap-3 cursor-not-allowed"
-              title="Coming soon"
-            >
-              <Icon icon="logos:google-icon" className="w-5 h-5" />
-              Continue with Google (soon)
-            </button>
             <button
               type="button"
               disabled

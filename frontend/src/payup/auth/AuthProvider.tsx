@@ -37,6 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         saveTokens(t)
         setState({ status: 'authed', user: uiUserFromAuth(res.user), tokens: t })
       },
+      async googleLogin(idToken) {
+        const res = await api.googleAuth(idToken)
+        const t: Tokens = { accessToken: res.token.accessToken, refreshToken: res.token.refreshToken }
+        saveTokens(t)
+        setState({ status: 'authed', user: uiUserFromAuth(res.user), tokens: t })
+      },
       async register(email, password, name) {
         const res = await api.register(email, password, name)
         const t: Tokens = { accessToken: res.token.accessToken, refreshToken: res.token.refreshToken }

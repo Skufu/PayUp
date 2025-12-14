@@ -18,14 +18,19 @@ type Querier interface {
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (CreateGroupRow, error)
 	CreateInvite(ctx context.Context, arg CreateInviteParams) error
 	CreateNudge(ctx context.Context, arg CreateNudgeParams) (Nudge, error)
+	CreateOAuthAccount(ctx context.Context, arg CreateOAuthAccountParams) (OauthAccount, error)
+	CreateOAuthUser(ctx context.Context, arg CreateOAuthUserParams) (CreateOAuthUserRow, error)
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (CreatePaymentRow, error)
 	CreateTransferExpense(ctx context.Context, arg CreateTransferExpenseParams) (pgtype.UUID, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeleteExpense(ctx context.Context, id pgtype.UUID) error
+	DeleteOAuthAccount(ctx context.Context, arg DeleteOAuthAccountParams) error
 	DeletePushSubscription(ctx context.Context, arg DeletePushSubscriptionParams) error
 	GetExpenseForDelete(ctx context.Context, id pgtype.UUID) (GetExpenseForDeleteRow, error)
 	GetGroup(ctx context.Context, id pgtype.UUID) (GetGroupRow, error)
 	GetInviteByCode(ctx context.Context, code string) (GetInviteByCodeRow, error)
+	GetOAuthAccount(ctx context.Context, arg GetOAuthAccountParams) (OauthAccount, error)
+	GetOAuthAccountsByUser(ctx context.Context, userID pgtype.UUID) ([]OauthAccount, error)
 	GetPaymentForUpdate(ctx context.Context, id pgtype.UUID) (GetPaymentForUpdateRow, error)
 	GetUnreadNudgeCount(ctx context.Context, receiverID pgtype.UUID) (int64, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)

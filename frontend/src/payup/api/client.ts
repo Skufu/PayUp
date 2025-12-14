@@ -9,25 +9,47 @@ export type Tokens = {
   refreshToken: string
 }
 
-const LS_KEY = 'payup_tokens_v1'
+const ACCESS_TOKEN_KEY = 'payup_access_token'
+const REFRESH_TOKEN_KEY = 'payup_refresh_token'
 
+// Token storage using sessionStorage for access token (cleared on tab close)
+// and localStorage for refresh token (persists for re-authentication)
 export function loadTokens(): Tokens | null {
-  const raw = localStorage.getItem(LS_KEY)
-  if (!raw) return null
-  try {
-    return JSON.parse(raw) as Tokens
-  } catch {
-    localStorage.removeItem(LS_KEY)
-    return null
+  const accessToken = sessionStorage.getItem(ACCESS_TOKEN_KEY)
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+
+  // If we have a refresh token but no access token, we can still authenticate
+  if (!accessToken && !refreshToken) return null
+
+  return {
+    accessToken: accessToken || '',
+    refreshToken: refreshToken || '',
   }
 }
 
 export function saveTokens(t: Tokens | null) {
   if (!t) {
-    localStorage.removeItem(LS_KEY)
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY)
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
     return
   }
-  localStorage.setItem(LS_KEY, JSON.stringify(t))
+  if (t.accessToken) {
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, t.accessToken)
+  }
+  if (t.refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, t.refreshToken)
+  }
+}
+
+// Clear all tokens (logout)
+export function clearTokens() {
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+}
+
+// Check if user has any authentication
+export function hasAuthentication(): boolean {
+  return !!(sessionStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(REFRESH_TOKEN_KEY))
 }
 
 function baseUrl(): string {
@@ -86,14 +108,19 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     const tok = loadTokens()
     if (!tok?.refreshToken) throw e
 
-    const refreshed = await rawRequest<{ token: { accessToken: string; refreshToken: string } }>(`/v1/auth/refresh`, {
-      method: 'POST',
-      body: JSON.stringify({ refreshToken: tok.refreshToken }),
-      skipAuth: true,
-    })
-    saveTokens({ accessToken: refreshed.token.accessToken, refreshToken: refreshed.token.refreshToken })
+    try {
+      const refreshed = await rawRequest<{ token: { accessToken: string; refreshToken: string } }>(`/v1/auth/refresh`, {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken: tok.refreshToken }),
+        skipAuth: true,
+      })
+      saveTokens({ accessToken: refreshed.token.accessToken, refreshToken: refreshed.token.refreshToken })
 
-    return await rawRequest<T>(path, init)
+      return await rawRequest<T>(path, init)
+    } catch {
+      // Refresh failed, clear tokens
+      clearTokens()
+      throw e
+    }
   }
 }
-

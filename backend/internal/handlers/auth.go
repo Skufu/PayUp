@@ -15,13 +15,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+	"google.golang.org/api/idtoken"
 )
 
 type AuthHandler struct {
 	Q      *sqlcdb.Queries
 	Issuer auth.Issuer
 
-	UploadService *services.UploadService
+	UploadService  *services.UploadService
+	GoogleClientID string
 }
 
 type registerRequest struct {
@@ -62,8 +64,13 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	email := strings.TrimSpace(strings.ToLower(req.Email))
-	if email == "" || len(req.Password) < 8 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid email or password"})
+	if !ValidateEmail(email) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid email format"})
+		return
+	}
+
+	if err := ValidatePassword(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -84,7 +91,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	row, err := h.Q.CreateUser(ctx, sqlcdb.CreateUserParams{
 		Email:        email,
-		PasswordHash: pwHash,
+		PasswordHash: &pwHash,
 		Name:         namePtr,
 	})
 	if err != nil {
@@ -128,8 +135,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	email := strings.TrimSpace(strings.ToLower(req.Email))
-	if email == "" || req.Password == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid email or password"})
+	if !ValidateEmail(email) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid email format"})
+		return
+	}
+	if req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "password is required"})
 		return
 	}
 
@@ -137,7 +148,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	defer cancel()
 
 	u, err := h.Q.GetUserByEmail(ctx, email)
-	if err != nil || !auth.CheckPassword(u.PasswordHash, req.Password) {
+	if err != nil || u.PasswordHash == nil || !auth.CheckPassword(*u.PasswordHash, req.Password) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
@@ -232,7 +243,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	// Accept multipart/form-data for optional QR upload.
+	// Accept multipart/form-data for optional QR and avatar uploads.
 	name := strings.TrimSpace(c.PostForm("name"))
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
@@ -255,15 +266,33 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 		qrPtr = &url
 	}
 
+	var avatarPtr *string
+	if file, header, err := c.Request.FormFile("avatar"); err == nil {
+		defer file.Close()
+
+		if h.UploadService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "upload service not available"})
+			return
+		}
+
+		url, upErr := h.UploadService.UploadAvatar(ctx, file, header.Filename, uid.String())
+		if upErr != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("avatar upload failed: %v", upErr)})
+			return
+		}
+		avatarPtr = &url
+	}
+
 	var namePtr *string
 	if name != "" {
 		namePtr = &name
 	}
 
 	if err := h.Q.UpdateUserProfile(ctx, sqlcdb.UpdateUserProfileParams{
-		ID:    sqlcutil.UUID(uid),
-		Name:  namePtr,
-		QrUrl: qrPtr,
+		ID:        sqlcutil.UUID(uid),
+		Name:      namePtr,
+		QrUrl:     qrPtr,
+		AvatarUrl: avatarPtr,
 	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update profile"})
 		return
@@ -294,5 +323,146 @@ func (h *AuthHandler) GetUserPublicProfile(c *gin.Context) {
 		"name":      u.Name,
 		"avatarUrl": u.AvatarUrl,
 		"qrUrl":     u.QrUrl,
+	})
+}
+
+type googleAuthRequest struct {
+	IDToken string `json:"idToken"`
+}
+
+// GoogleAuth handles Google OAuth sign-in using ID token from frontend.
+func (h *AuthHandler) GoogleAuth(c *gin.Context) {
+	var req googleAuthRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.IDToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "idToken is required"})
+		return
+	}
+
+	if h.GoogleClientID == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "google auth not configured"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	// Verify the ID token with Google
+	payload, err := idtoken.Validate(ctx, req.IDToken, h.GoogleClientID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid google token"})
+		return
+	}
+
+	// Extract user info from the token payload
+	googleID, _ := payload.Claims["sub"].(string)
+	email, _ := payload.Claims["email"].(string)
+	name, _ := payload.Claims["name"].(string)
+	picture, _ := payload.Claims["picture"].(string)
+
+	if googleID == "" || email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid token claims"})
+		return
+	}
+
+	// Check if OAuth account exists
+	oauthAcc, err := h.Q.GetOAuthAccount(ctx, sqlcdb.GetOAuthAccountParams{
+		Provider:   "google",
+		ProviderID: googleID,
+	})
+
+	var userID string
+	var user sqlcdb.GetUserByIDRow
+
+	if err == nil {
+		// OAuth account exists, get user
+		userID = sqlcutil.UUIDToString(oauthAcc.UserID)
+		user, err = h.Q.GetUserByID(ctx, oauthAcc.UserID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get user"})
+			return
+		}
+	} else {
+		// OAuth account doesn't exist, check if user with email exists
+		existingUser, emailErr := h.Q.GetUserByEmail(ctx, strings.ToLower(email))
+		if emailErr == nil {
+			// User exists, link OAuth account
+			userID = sqlcutil.UUIDToString(existingUser.ID)
+			_, err = h.Q.CreateOAuthAccount(ctx, sqlcdb.CreateOAuthAccountParams{
+				UserID:     existingUser.ID,
+				Provider:   "google",
+				ProviderID: googleID,
+				Email:      &email,
+			})
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to link google account"})
+				return
+			}
+			user, _ = h.Q.GetUserByID(ctx, existingUser.ID)
+		} else {
+			// Create new user
+			var namePtr, picturePtr *string
+			if name != "" {
+				namePtr = &name
+			}
+			if picture != "" {
+				picturePtr = &picture
+			}
+
+			newUser, createErr := h.Q.CreateOAuthUser(ctx, sqlcdb.CreateOAuthUserParams{
+				Email:     strings.ToLower(email),
+				Name:      namePtr,
+				AvatarUrl: picturePtr,
+			})
+			if createErr != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
+				return
+			}
+
+			userID = sqlcutil.UUIDToString(newUser.ID)
+
+			// Create OAuth account link
+			_, err = h.Q.CreateOAuthAccount(ctx, sqlcdb.CreateOAuthAccountParams{
+				UserID:     newUser.ID,
+				Provider:   "google",
+				ProviderID: googleID,
+				Email:      &email,
+			})
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create oauth account"})
+				return
+			}
+
+			user = sqlcdb.GetUserByIDRow{
+				ID:        newUser.ID,
+				Email:     newUser.Email,
+				Name:      newUser.Name,
+				AvatarUrl: newUser.AvatarUrl,
+				QrUrl:     newUser.QrUrl,
+				CreatedAt: newUser.CreatedAt,
+				UpdatedAt: newUser.UpdatedAt,
+			}
+		}
+	}
+
+	// Issue JWT tokens
+	tokens, err := h.Issuer.Issue(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to issue token"})
+		return
+	}
+
+	createdAt, _ := sqlcutil.Time(user.CreatedAt)
+	updatedAt, _ := sqlcutil.Time(user.UpdatedAt)
+	c.JSON(http.StatusOK, authResponse{
+		User: userResponse{
+			ID:        userID,
+			Email:     user.Email,
+			Name:      user.Name,
+			AvatarURL: user.AvatarUrl,
+			QRURL:     user.QrUrl,
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
+		},
+		Token: tokens,
 	})
 }

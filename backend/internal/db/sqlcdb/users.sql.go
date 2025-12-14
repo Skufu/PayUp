@@ -11,6 +11,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createOAuthUser = `-- name: CreateOAuthUser :one
+INSERT INTO users (email, name, avatar_url)
+VALUES ($1, $2, $3)
+RETURNING id, email, name, avatar_url, qr_url, created_at, updated_at
+`
+
+type CreateOAuthUserParams struct {
+	Email     string  `json:"email"`
+	Name      *string `json:"name"`
+	AvatarUrl *string `json:"avatar_url"`
+}
+
+type CreateOAuthUserRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Email     string             `json:"email"`
+	Name      *string            `json:"name"`
+	AvatarUrl *string            `json:"avatar_url"`
+	QrUrl     *string            `json:"qr_url"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) CreateOAuthUser(ctx context.Context, arg CreateOAuthUserParams) (CreateOAuthUserRow, error) {
+	row := q.db.QueryRow(ctx, createOAuthUser, arg.Email, arg.Name, arg.AvatarUrl)
+	var i CreateOAuthUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.AvatarUrl,
+		&i.QrUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, password_hash, name)
 VALUES ($1, $2, $3)
@@ -19,7 +56,7 @@ RETURNING id, email, name, avatar_url, qr_url, created_at, updated_at
 
 type CreateUserParams struct {
 	Email        string  `json:"email"`
-	PasswordHash string  `json:"password_hash"`
+	PasswordHash *string `json:"password_hash"`
 	Name         *string `json:"name"`
 }
 
@@ -131,17 +168,24 @@ UPDATE users
 SET
   name = COALESCE($2, name),
   qr_url = COALESCE($3, qr_url),
+  avatar_url = COALESCE($4, avatar_url),
   updated_at = NOW()
 WHERE id = $1
 `
 
 type UpdateUserProfileParams struct {
-	ID    pgtype.UUID `json:"id"`
-	Name  *string     `json:"name"`
-	QrUrl *string     `json:"qr_url"`
+	ID        pgtype.UUID `json:"id"`
+	Name      *string     `json:"name"`
+	QrUrl     *string     `json:"qr_url"`
+	AvatarUrl *string     `json:"avatar_url"`
 }
 
 func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error {
-	_, err := q.db.Exec(ctx, updateUserProfile, arg.ID, arg.Name, arg.QrUrl)
+	_, err := q.db.Exec(ctx, updateUserProfile,
+		arg.ID,
+		arg.Name,
+		arg.QrUrl,
+		arg.AvatarUrl,
+	)
 	return err
 }

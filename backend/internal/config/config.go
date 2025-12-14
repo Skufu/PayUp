@@ -15,6 +15,10 @@ type Config struct {
 
 	AccessTokenTTL  time.Duration
 	RefreshTokenTTL time.Duration
+
+	// Google OAuth
+	GoogleClientID     string
+	GoogleClientSecret string
 }
 
 func Load() Config {
@@ -23,11 +27,13 @@ func Load() Config {
 	_ = godotenv.Load("../.env", ".env")
 
 	cfg := Config{
-		Port:            getenv("PORT", "8080"),
-		DatabaseURL:     os.Getenv("DATABASE_URL"),
-		JWTSecret:       os.Getenv("JWT_SECRET"),
-		AccessTokenTTL:  15 * time.Minute,
-		RefreshTokenTTL: 30 * 24 * time.Hour,
+		Port:               getenv("PORT", "8080"),
+		DatabaseURL:        os.Getenv("DATABASE_URL"),
+		JWTSecret:          os.Getenv("JWT_SECRET"),
+		AccessTokenTTL:     15 * time.Minute,
+		RefreshTokenTTL:    30 * 24 * time.Hour,
+		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 	}
 
 	if mins := os.Getenv("ACCESS_TOKEN_TTL_MINUTES"); mins != "" {
