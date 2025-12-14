@@ -12,6 +12,8 @@ vendor/
 # Docs (temporarily not committing)
 plan.md
 PayUp_prototype.md
+PayUp.md
+frontend/README.md
 
 # Build outputs
 dist/
