@@ -330,17 +330,24 @@ const NudgePayModal = memo(function NudgePayModal({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setStep('loading')
+    let cancelled = false
     api
       .getUserPublicProfile(nudge.senderId)
       .then((p) => {
-        setQrUrl(p.qrUrl ?? '')
-        setStep('scan')
+        if (!cancelled) {
+          setQrUrl(p.qrUrl ?? '')
+          setStep('scan')
+        }
       })
       .catch(() => {
-        setQrUrl('')
-        setStep('scan')
+        if (!cancelled) {
+          setQrUrl('')
+          setStep('scan')
+        }
       })
+    return () => {
+      cancelled = true
+    }
   }, [nudge.senderId])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
