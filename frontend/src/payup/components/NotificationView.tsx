@@ -21,7 +21,7 @@ export function NotificationView({ payments, currentUser, activeUsers, onReviewP
   }, [payments, currentUser.id])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-3xl mx-auto">
       <h2 className="text-xs uppercase text-gray-500 font-mono tracking-widest px-2">Payment Notifications</h2>
 
       {allActivities.length === 0 && (

@@ -11,7 +11,8 @@ import { MembersModal } from './components/modals/MembersModal'
 import { MyQrModal } from './components/modals/MyQrModal'
 import { PaymentModal } from './components/modals/PaymentModal'
 import { ProfileModal } from './components/modals/ProfileModal'
-import { SideMenu } from './components/modals/SideMenu'
+import { ShareInviteModal } from './components/modals/ShareInviteModal'
+import { SideMenu, SideMenuContent } from './components/modals/SideMenu'
 import { api } from './api/endpoints'
 import { useAuth } from './auth/useAuth'
 import type { Expense, Payment, User } from './types'
@@ -43,6 +44,7 @@ export function PayUpApp() {
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false)
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false)
   const [isMyQrModalOpen, setIsMyQrModalOpen] = useState(false)
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
 
   const groupsQuery = useQuery({
     queryKey: ['groups'],
@@ -163,6 +165,11 @@ export function PayUpApp() {
     setIsAddModalOpen(true)
   }
 
+  const handleGenerateInvite = async (groupId: string) => {
+    const result = await api.createInvite(groupId)
+    return result
+  }
+
   const pendingCount = payments.filter((p) => p.receiverId === currentUser.id && p.status === 'pending').length
 
   return (
@@ -178,7 +185,23 @@ export function PayUpApp() {
         onCentralAdd={() => openAddModal('expense')}
         onOpenMembers={() => setIsMembersModalOpen(true)}
         onOpenMyQr={() => setIsMyQrModalOpen(true)}
+        onOpenInvite={() => setIsInviteModalOpen(true)}
         onLogout={logout}
+        sidebar={
+          <SideMenuContent
+            groups={(groupsQuery.data ?? []).map((g) => ({
+              id: g.id,
+              name: g.name,
+              members: [],
+              createdAt: Date.parse(g.createdAt),
+            }))}
+            currentGroupId={currentGroup?.id}
+            onSelectGroup={(g) => setCurrentGroupId(g.id)}
+            onCreateGroup={() => setIsCreateGroupOpen(true)}
+            onOpenProfile={() => setIsProfileOpen(true)}
+            currentUser={currentUser}
+          />
+        }
       >
         {activeTab === 'wallet' && (
           <WalletView
@@ -255,6 +278,16 @@ export function PayUpApp() {
       )}
 
       {isMyQrModalOpen && <MyQrModal isOpen onClose={() => setIsMyQrModalOpen(false)} currentUser={currentUser} />}
+
+      {isInviteModalOpen && currentGroup && (
+        <ShareInviteModal
+          isOpen
+          onClose={() => setIsInviteModalOpen(false)}
+          groupId={currentGroup.id}
+          groupName={currentGroup.name}
+          onGenerateInvite={handleGenerateInvite}
+        />
+      )}
     </>
   )
 }

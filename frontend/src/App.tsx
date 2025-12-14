@@ -5,6 +5,7 @@ import { PayUpApp } from './payup/PayUpApp'
 import { LoginPage } from './payup/pages/auth/LoginPage'
 import { RegisterPage } from './payup/pages/auth/RegisterPage'
 import { LandingPage } from './payup/pages/LandingPage'
+import { JoinGroupPage } from './payup/pages/JoinGroupPage'
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
+        <Route path="/join/:code" element={<JoinGroupPage />} />
         <Route
           path="/app"
           element={

@@ -22,40 +22,59 @@ export function WalletView({
   onDeleteExpense,
 }: Props) {
   return (
-    <>
-      <section className="mt-4">
-        <BalanceCard balances={balances} currentUser={currentUser} />
-      </section>
+    <div className="md:grid md:grid-cols-12 md:gap-8 md:items-start max-w-full mx-auto">
+      {/* Left Column (Desktop) - Stats & Settlements */}
+      <div className="md:col-span-4 xl:col-span-3 space-y-6">
+        <section className="mt-4 md:mt-0">
+          <BalanceCard balances={balances} currentUser={currentUser} />
+        </section>
 
-      <SettlementList balances={balances} currentUser={currentUser} activeUsers={activeUsers} onPayClick={onPayClick} />
+        {/* Desktop Settlements List - Only visible if there are settlements */}
+        <section className="hidden md:block">
+           <SettlementList balances={balances} currentUser={currentUser} activeUsers={activeUsers} onPayClick={onPayClick} />
+        </section>
+      </div>
 
-      <section>
-        <div className="flex justify-between items-center mb-4 px-2">
-          <h3 className="text-[10px] font-mono uppercase text-gray-500 tracking-widest">{currentGroup?.name} Feed</h3>
-          <span className="text-[10px] bg-white/5 px-2 py-1 rounded text-gray-400 font-mono">{expenses.length}</span>
-        </div>
+      {/* Right Column (Desktop) - Feed */}
+      <div className="md:col-span-8 xl:col-span-9">
+        {/* Mobile Settlements - Visible only on mobile */}
+        <section className="md:hidden mb-8">
+           <SettlementList balances={balances} currentUser={currentUser} activeUsers={activeUsers} onPayClick={onPayClick} />
+        </section>
 
-        <div className="space-y-4 border-l border-white/5 ml-2 pl-2">
-          {expenses.map((exp) => (
-            <ExpenseItem
-              key={exp.id}
-              expense={exp}
-              currentUser={currentUser}
-              activeUsers={activeUsers}
-              onDelete={onDeleteExpense}
-            />
-          ))}
-
-          {expenses.length === 0 && (
-            <div className="py-12 px-6 rounded-2xl border border-dashed border-white/10 text-center text-gray-600 italic text-sm font-mono">
-              No expenses yet.
-              <br />
-              Tap the + button to add one!
+        <section className="bg-[#131316]/50 rounded-3xl border border-white/5 overflow-hidden min-h-[500px]">
+          <div className="flex justify-between items-center p-6 border-b border-white/5 bg-[#1c1c21]/50 backdrop-blur-sm sticky top-0 z-10">
+            <div>
+                <h3 className="text-sm font-bold text-white tracking-tight">{currentGroup?.name} Feed</h3>
+                <p className="text-[10px] text-gray-500 font-mono mt-0.5">LATEST ACTIVITY</p>
             </div>
-          )}
-        </div>
-      </section>
-    </>
+            <span className="text-xs bg-white/10 px-2.5 py-1 rounded-full text-white font-mono font-bold border border-white/5">{expenses.length}</span>
+          </div>
+
+          <div className="p-4 space-y-3 md:p-6 md:space-y-4">
+            {expenses.map((exp) => (
+              <ExpenseItem
+                key={exp.id}
+                expense={exp}
+                currentUser={currentUser}
+                activeUsers={activeUsers}
+                onDelete={onDeleteExpense}
+              />
+            ))}
+
+            {expenses.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 text-gray-600">
+                    <Smartphone size={24} />
+                </div>
+                <p className="text-gray-400 font-bold mb-1">No expenses yet</p>
+                <p className="text-xs text-gray-600 font-mono">Tap the + button to add one!</p>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
   )
 }
 
@@ -65,45 +84,69 @@ function BalanceCard({ balances, currentUser }: { balances: Record<string, numbe
   const isDebt = myBalance < 0
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-[#1c1c21] border border-white/5 p-8 mb-8 group transition-transform hover:scale-[1.02] duration-500">
+    <div className="relative overflow-hidden rounded-3xl bg-[#1c1c21] border border-white/5 p-6 md:p-8 group transition-transform hover:scale-[1.01] duration-500 shadow-2xl">
+      {/* Dynamic Background Blob */}
       <div
-        className={`absolute top-0 right-0 w-48 h-48 rounded-full blur-[80px] opacity-20 transition-colors duration-500 ${
+        className={`absolute -top-10 -right-10 w-40 h-40 md:w-56 md:h-56 rounded-full blur-[60px] md:blur-[80px] opacity-20 transition-colors duration-500 pointer-events-none ${
           isDebt ? 'bg-[#ff4f99]' : 'bg-[#dfff4f]'
         }`}
       />
-      <div className="relative z-10 flex flex-col items-center text-center">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mb-2 border border-white/10 px-2 py-0.5 rounded-full">
-          Net Position
-        </span>
-        <div className="flex items-baseline gap-1 my-2">
+      
+      <div className="relative z-10">
+        <div className="flex justify-between items-start mb-6">
+            <div>
+                <h2 className="text-[10px] font-mono uppercase tracking-widest text-gray-500 mb-1">Net Position</h2>
+                <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${isDebt ? 'bg-[#ff4f99]' : isOwed ? 'bg-[#dfff4f]' : 'bg-gray-500'}`} />
+                    <span className="text-xs font-bold text-gray-300">
+                        {isDebt ? 'You Owe' : isOwed ? 'You are Owed' : 'Settled'}
+                    </span>
+                </div>
+            </div>
+            {/* Status Badge */}
+             <div
+                className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 ${
+                    isDebt
+                    ? 'border-[#ff4f99]/30 text-[#ff4f99] bg-[#ff4f99]/10'
+                    : isOwed
+                        ? 'border-[#dfff4f]/30 text-[#dfff4f] bg-[#dfff4f]/10'
+                        : 'border-gray-500/30 text-gray-400 bg-gray-500/10'
+                }`}
+                >
+                {isDebt ? (
+                    <ArrowRight size={10} className="rotate-45" /> 
+                ) : isOwed ? (
+                    <ArrowRight size={10} className="-rotate-45" /> 
+                ) : (
+                    <Check size={10} /> 
+                )}
+                {isDebt ? 'Debt' : isOwed ? 'Credit' : 'All Good'}
+            </div>
+        </div>
+
+        <div className="mb-6">
           <span
-            className={`font-display text-5xl sm:text-6xl font-bold tracking-tight drop-shadow-2xl ${
+            className={`font-display text-4xl md:text-5xl font-bold tracking-tight drop-shadow-lg block truncate ${
               isDebt ? 'text-[#ff4f99]' : 'text-[#dfff4f]'
             }`}
           >
             {Math.abs(myBalance).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
           </span>
+          <p className="text-[10px] text-gray-500 font-mono mt-2">
+            {isDebt ? 'Total amount you need to pay back' : isOwed ? 'Total amount friends owe you' : 'You are all squared up!'}
+          </p>
         </div>
-        <div
-          className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-2 ${
-            isDebt
-              ? 'border-[#ff4f99]/30 text-[#ff4f99] bg-[#ff4f99]/10'
-              : 'border-[#dfff4f]/30 text-[#dfff4f] bg-[#dfff4f]/10'
-          }`}
-        >
-          {isDebt ? (
-            <>
-              <ArrowRight size={12} className="rotate-45" /> You Owe Total
-            </>
-          ) : isOwed ? (
-            <>
-              <ArrowRight size={12} className="-rotate-45" /> You are Owed
-            </>
-          ) : (
-            <>
-              <Check size={12} /> All Settled
-            </>
-          )}
+
+        {/* Mini Stats Row (Optional - for future expansion) */}
+        <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 mt-4">
+             <div>
+                 <p className="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Group Total</p>
+                 <p className="text-sm font-bold text-gray-300">--</p>
+             </div>
+             <div>
+                 <p className="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Your Share</p>
+                 <p className="text-sm font-bold text-gray-300">--</p>
+             </div>
         </div>
       </div>
     </div>
@@ -121,79 +164,106 @@ function SettlementList({
   activeUsers: User[]
   onPayClick: (userId: string, amount: number) => void
 }) {
+    const settlements = Object.entries(balances)
+    .filter(([userId, amount]) => {
+        if (userId === currentUser.id) return false
+        if (Math.abs(amount) < 1) return false
+        return true
+    })
+    .map(([userId, amount]) => {
+         const userObj = activeUsers.find((u) => u.id === userId)
+         if (!userObj) return null
+         
+         const myNet = balances[currentUser.id] || 0
+         const isMeDebtor = myNet < -1
+         const isTheyCreditor = amount > 1
+
+         if (isMeDebtor && isTheyCreditor) {
+             return { type: 'pay', user: userObj, amount: Math.min(Math.abs(myNet), amount) }
+         }
+         if (myNet > 1 && amount < -1) {
+             return { type: 'collect', user: userObj, amount: 0 }
+         }
+         return null
+    })
+    .filter(Boolean) as { type: 'pay' | 'collect', user: User, amount: number }[]
+
+    if (settlements.length === 0) {
+        return (
+            <div className="rounded-3xl border border-white/5 bg-[#1c1c21] p-8 flex flex-col items-center text-center">
+                 <div className="w-12 h-12 rounded-full bg-[#131316] flex items-center justify-center mb-4 text-[#dfff4f] border border-white/5 shadow-lg">
+                    <Check size={20} />
+                 </div>
+                 <p className="text-sm font-bold text-white mb-1">All Settled Up</p>
+                 <p className="text-[10px] text-gray-500 font-mono tracking-wide">No pending settlements needed.</p>
+            </div>
+        )
+    }
+
   return (
-    <div className="space-y-3 mb-24">
-      <h3 className="text-[10px] font-mono uppercase text-gray-500 mb-4 px-2 tracking-widest">Settlements Needed</h3>
-      {Object.entries(balances).map(([userId, amount]) => {
-        if (userId === currentUser.id) return null
-        if (Math.abs(amount) < 1) return null
-        const userObj = activeUsers.find((u) => u.id === userId)
-        if (!userObj) return null
-
-        const myNet = balances[currentUser.id] || 0
-        const isMeDebtor = myNet < -1
-        const isTheyCreditor = amount > 1
-
-        if (isMeDebtor && isTheyCreditor) {
-          return (
-            <div
-              key={userId}
-              className="flex items-center justify-between p-4 rounded-2xl bg-[#131316] border border-white/5 hover:border-white/20 transition-all group"
-            >
-              <div className="flex items-center gap-4">
+    <div className="space-y-3 mb-24 md:mb-0">
+      <div className="flex items-center justify-between px-1 mb-2">
+         <h3 className="text-[10px] font-mono uppercase text-gray-500 tracking-widest">Settlements Needed</h3>
+         <span className="text-[9px] bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded border border-red-500/20 font-bold">{settlements.filter(s => s.type === 'pay').length} Pending</span>
+      </div>
+      
+      {settlements.map((item) => {
+        if (item.type === 'pay') {
+            return (
                 <div
-                  className={`w-12 h-12 rounded-full ${userObj.color} flex items-center justify-center text-black font-bold text-lg shadow-lg`}
+                  key={item.user.id}
+                  className="flex items-center justify-between p-4 rounded-2xl bg-[#131316] border border-white/5 hover:border-white/20 transition-all group shadow-lg"
                 >
-                  {userObj.avatar}
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-full ${item.user.color} flex items-center justify-center text-black font-bold text-sm shadow-md shrink-0`}
+                    >
+                      {item.user.avatar}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white group-hover:text-[#dfff4f] transition-colors truncate">
+                        Pay {item.user.name}
+                      </p>
+                      <p className="text-[10px] text-gray-500 font-mono">
+                        {item.amount.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onPayClick(item.user.id, item.amount)}
+                    className="bg-[#dfff4f] text-black px-4 py-2 rounded-xl text-[10px] font-bold font-mono hover:bg-[#ccee3e] transition-colors shadow-[0_0_15px_rgba(223,255,79,0.1)] shrink-0"
+                  >
+                    PAY
+                  </button>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-white group-hover:text-[#dfff4f] transition-colors">
-                    Pay {userObj.name}
-                  </p>
-                  <p className="text-xs text-gray-500 font-mono">Tap to view QR</p>
-                </div>
-              </div>
-              <button
-                onClick={() => onPayClick(userId, Math.min(Math.abs(myNet), amount))}
-                className="bg-[#dfff4f] text-black px-5 py-2.5 rounded-xl text-xs font-bold font-mono hover:bg-[#ccee3e] transition-colors acid-border shadow-[0_0_15px_rgba(223,255,79,0.2)]"
-              >
-                PAY NOW
-              </button>
-            </div>
-          )
+              )
         }
-
-        if (myNet > 1 && amount < -1) {
-          return (
-            <div
-              key={userId}
-              className="flex items-center justify-between p-4 rounded-2xl bg-[#131316] border border-white/5 opacity-80 hover:opacity-100 transition-opacity"
-            >
-              <div className="flex items-center gap-4">
+        
+        if (item.type === 'collect') {
+             return (
                 <div
-                  className={`w-10 h-10 rounded-full ${userObj.color} flex items-center justify-center text-black font-bold text-sm opacity-80`}
+                  key={item.user.id}
+                  className="flex items-center justify-between p-4 rounded-2xl bg-[#131316] border border-white/5 opacity-80 hover:opacity-100 transition-opacity"
                 >
-                  {userObj.avatar}
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-full ${item.user.color} flex items-center justify-center text-black font-bold text-sm opacity-80 shrink-0`}
+                    >
+                      {item.user.avatar}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-400">{item.user.name}</p>
+                      <p className="text-[10px] text-gray-600 font-mono">Owes you</p>
+                    </div>
+                  </div>
+                  <button className="text-[#ff4f99] text-[10px] font-bold font-mono px-3 py-1.5 rounded border border-[#ff4f99]/30 hover:bg-[#ff4f99]/10 transition-colors uppercase tracking-wider shrink-0">
+                    Nudge
+                  </button>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-400">{userObj.name} owes you</p>
-                </div>
-              </div>
-              <button className="text-[#ff4f99] text-[10px] font-bold font-mono px-3 py-1.5 rounded border border-[#ff4f99]/30 hover:bg-[#ff4f99]/10 transition-colors uppercase tracking-wider">
-                Nudge
-              </button>
-            </div>
-          )
+              )
         }
-
         return null
       })}
-      {Math.abs(balances[currentUser.id] || 0) < 1 && (
-        <div className="text-center py-12 opacity-30 flex flex-col items-center">
-          <Smartphone size={48} className="mb-4 text-gray-500" />
-          <p className="text-sm font-mono">No active debts.</p>
-        </div>
-      )}
     </div>
   )
 }
@@ -215,9 +285,9 @@ function ExpenseItem({
   const payer = activeUsers.find((u) => u.id === expense.payerId) || { name: 'Unknown' }
 
   return (
-    <div className="group relative pl-6 pb-8 border-l border-white/10 last:border-0 last:pb-0">
+    <div className="group relative pl-6 pb-8 border-l border-white/10 last:border-0 last:pb-0 md:pl-0 md:pb-0 md:border-l-0 md:bg-[#131316] md:p-4 md:rounded-xl md:border md:border-white/5 md:hover:border-white/10 md:transition-all">
       <div
-        className={`absolute -left-[5px] top-0 w-[9px] h-[9px] rounded-full border-2 border-[#0a0a0c] ${
+        className={`absolute -left-[5px] top-0 w-[9px] h-[9px] rounded-full border-2 border-[#0a0a0c] md:hidden ${
           isPayer ? 'bg-[#dfff4f]' : isTransfer ? 'bg-[#ff4f99]' : 'bg-[#1c1c21]'
         }`}
       />
@@ -283,4 +353,3 @@ function ExpenseItem({
     </div>
   )
 }
-

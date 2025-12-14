@@ -25,7 +25,9 @@ type Props = {
   onCentralAdd: () => void
   onOpenMembers: () => void
   onOpenMyQr: () => void
+  onOpenInvite: () => void
   onLogout: () => void
+  sidebar?: ReactNode
 }
 
 export function AppShell({
@@ -39,83 +41,136 @@ export function AppShell({
   onCentralAdd,
   onOpenMembers,
   onOpenMyQr,
+  onOpenInvite,
   onLogout,
+  sidebar,
 }: Props) {
-  const [showInviteToast, setShowInviteToast] = useState(false)
-
-  const handleInvite = () => {
-    void navigator.clipboard.writeText(`https://payup.app/join/${currentGroup?.id || 'default'}`)
-    setShowInviteToast(true)
-    setTimeout(() => setShowInviteToast(false), 2000)
-  }
 
   return (
-    <div className="h-[100dvh] w-full bg-[#050507] flex justify-center font-mono">
-      <div className="w-full max-w-md h-full bg-[#0a0a0c] relative shadow-2xl flex flex-col border-x border-white/5">
-        {/* Background Atmosphere */}
-        <div className="absolute top-[-20%] left-[-20%] w-[140%] h-[60%] bg-gradient-to-b from-[#1c1c21] to-transparent opacity-50 blur-3xl pointer-events-none" />
-        <div className="absolute top-[10%] right-[-10%] w-64 h-64 bg-[#dfff4f] rounded-full mix-blend-overlay filter blur-[100px] opacity-10 animate-float pointer-events-none" />
+    <div className="h-[100dvh] w-full bg-[#050507] font-mono flex md:flex-row overflow-hidden text-gray-100">
+      {/* Desktop Sidebar - Always visible on desktop */}
+      {sidebar && (
+        <div className="hidden md:flex w-72 border-r border-white/5 bg-[#08080a] shrink-0 flex-col z-20">
+          {sidebar}
+        </div>
+      )}
+
+      {/* Main Content Area - Takes remaining width */}
+      <div className="flex-1 flex flex-col h-full relative bg-[#0a0a0c] min-w-0">
+        {/* Simplified Background - Better Performance */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0c] to-[#050507] z-0" />
+        {/* Subtle ambient light - static, no heavy animation */}
+        <div className="absolute top-0 right-0 w-[40vw] h-[40vw] max-w-[500px] max-h-[500px] bg-[#dfff4f] rounded-full mix-blend-overlay filter blur-[120px] opacity-5 pointer-events-none" />
 
         {/* Header */}
-        <div className="relative z-40 glass-panel px-4 py-4 flex justify-between items-center shrink-0 gap-3">
-          <button onClick={onMenuClick} className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors">
+        <div className="relative z-40 border-b border-white/5 bg-[#0a0a0c]/80 backdrop-blur-md px-4 py-3 flex justify-between items-center shrink-0 gap-4 md:px-6 md:py-4">
+          {/* Mobile Menu Button */}
+          <button 
+            onClick={onMenuClick} 
+            className={`p-2 -ml-2 text-gray-400 hover:text-white transition-colors md:hidden`}
+          >
             <Menu size={24} />
           </button>
 
+          {/* Title / Group Name */}
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-xl font-bold tracking-tight text-[#dfff4f] drop-shadow-md truncate">
-              PayUp
+            <h1 className="font-display text-lg md:text-xl font-bold tracking-tight text-[#dfff4f] truncate">
+              {currentGroup ? currentGroup.name : 'PayUp'}
             </h1>
-            <p className="text-[10px] text-gray-500 font-mono tracking-[0.1em] uppercase truncate">
-              {currentGroup ? currentGroup.name : 'Loading...'}
+            <p className="text-[10px] text-gray-500 font-mono tracking-widest uppercase truncate">
+              {currentGroup ? 'Trip Dashboard' : 'Loading...'}
             </p>
           </div>
 
-          <button
-            onClick={handleInvite}
-            className="p-2 text-gray-400 hover:text-[#dfff4f] transition-colors relative"
-            title="Invite Friends"
-          >
-            <Share2 size={20} />
-            {showInviteToast && (
-              <div className="absolute top-full right-0 mt-2 whitespace-nowrap bg-[#dfff4f] text-black text-[10px] font-bold px-2 py-1 rounded animate-slide-up">
-                Link Copied!
-              </div>
-            )}
-          </button>
-
-          <div className="relative group">
-            <button className="flex items-center gap-2 bg-white/5 px-2 py-1.5 rounded-full border border-white/10 hover:bg-white/10 transition-colors">
-              <div
-                className={`w-6 h-6 rounded-full ${currentUser.color} flex items-center justify-center text-[10px] text-black font-bold`}
-              >
-                {currentUser.avatar}
-              </div>
-              <ChevronDown size={12} className="text-gray-400" />
-            </button>
-            <div className="absolute right-0 top-full mt-2 w-48 bg-[#131316] border border-white/10 rounded-xl shadow-xl overflow-hidden hidden group-hover:block animate-slide-up z-50">
-              <div className="px-4 py-3 border-b border-white/5">
-                <div className="text-[10px] text-gray-500 uppercase tracking-wider">Signed in</div>
-                <div className="text-sm text-white font-mono truncate">{currentUser.name}</div>
-              </div>
+          {/* Desktop Navigation Tabs */}
+          <div className="hidden md:flex items-center gap-1 bg-white/5 rounded-full p-1 border border-white/5 mx-4">
               <button
-                onClick={onLogout}
-                className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center gap-3 transition-colors"
+                onClick={() => onTabChange('wallet')}
+                className={`px-6 py-2 rounded-full text-xs font-bold transition-all ${
+                  activeTab === 'wallet' 
+                  ? 'bg-[#dfff4f] text-black shadow-lg shadow-[#dfff4f]/20' 
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
               >
-                <LogOut size={16} className="text-gray-400" />
-                <span className="text-sm font-mono text-gray-200">Log out</span>
+                Wallet
               </button>
+              <button
+                onClick={() => onTabChange('notifications')}
+                className={`px-6 py-2 rounded-full text-xs font-bold transition-all relative ${
+                  activeTab === 'notifications' 
+                  ? 'bg-[#dfff4f] text-black shadow-lg shadow-[#dfff4f]/20' 
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                Activity
+                {notificationCount > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-[#ff4f99] rounded-full" />
+                )}
+              </button>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 md:gap-4">
+            <button
+              onClick={onOpenInvite}
+              className="p-2 text-gray-400 hover:text-[#dfff4f] transition-colors"
+              title="Invite Friends"
+            >
+              <Share2 size={20} />
+            </button>
+
+            {/* Desktop Quick Actions */}
+            <div className="hidden md:flex items-center gap-2 border-l border-white/10 pl-4">
+               <button onClick={onOpenMembers} className="p-2 text-gray-400 hover:text-white transition-colors" title="Members">
+                   <Users size={20} />
+               </button>
+               <button onClick={onOpenMyQr} className="p-2 text-gray-400 hover:text-white transition-colors" title="My QR">
+                   <QrCode size={20} />
+               </button>
+               <button 
+                onClick={onCentralAdd}
+                className="ml-2 bg-[#dfff4f] text-black px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-[#dfff4f]/10 hover:bg-[#ccee3e] transition-colors flex items-center gap-2"
+               >
+                   <Plus size={16} strokeWidth={3} /> Add
+               </button>
+            </div>
+
+            {/* User Profile Dropdown */}
+            <div className="relative group pl-2 md:pl-0">
+              <button className="flex items-center gap-2 bg-white/5 px-2 py-1.5 rounded-full border border-white/10 hover:bg-white/10 transition-colors">
+                <div
+                  className={`w-6 h-6 rounded-full ${currentUser.color} flex items-center justify-center text-[10px] text-black font-bold`}
+                >
+                  {currentUser.avatar}
+                </div>
+                <ChevronDown size={12} className="text-gray-400" />
+              </button>
+              <div className="absolute right-0 top-full mt-2 w-48 bg-[#131316] border border-white/10 rounded-xl shadow-xl overflow-hidden hidden group-hover:block animate-slide-up z-50">
+                <div className="px-4 py-3 border-b border-white/5">
+                  <div className="text-[10px] text-gray-500 uppercase tracking-wider">Signed in</div>
+                  <div className="text-sm text-white font-mono truncate">{currentUser.name}</div>
+                </div>
+                <button
+                  onClick={onLogout}
+                  className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center gap-3 transition-colors"
+                >
+                  <LogOut size={16} className="text-gray-400" />
+                  <span className="text-sm font-mono text-gray-200">Log out</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Scrollable Main Content */}
-        <main className="flex-1 overflow-y-auto no-scrollbar pb-24 px-4 pt-6 relative z-10 scroll-smooth">
-          {children}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pb-24 px-4 pt-6 relative z-10 md:px-12 md:pb-12">
+          <div className="w-full">
+             {children}
+          </div>
         </main>
 
-        {/* Bottom Nav - Updated with Central Add Button */}
-        <div className="glass-panel-top pb-8 pt-4 px-6 flex justify-between items-center z-40 shrink-0">
+        {/* Bottom Nav - Mobile Only */}
+        <div className="md:hidden border-t border-white/5 bg-[#0a0a0c]/90 backdrop-blur-lg pb-8 pt-2 px-6 flex justify-between items-center z-40 shrink-0">
           <NavIcon icon={Wallet} active={activeTab === 'wallet'} onClick={() => onTabChange('wallet')} />
           <NavIcon
             icon={Bell}
@@ -128,9 +183,9 @@ export function AppShell({
           <div className="relative -top-6">
             <button
               onClick={onCentralAdd}
-              className="w-16 h-16 rounded-full bg-[#dfff4f] flex items-center justify-center text-black shadow-[0_0_20px_rgba(223,255,79,0.4)] border-4 border-[#0a0a0c] hover:scale-105 transition-transform active:scale-95"
+              className="w-14 h-14 rounded-full bg-[#dfff4f] flex items-center justify-center text-black shadow-[0_0_20px_rgba(223,255,79,0.3)] border-4 border-[#0a0a0c] hover:scale-105 transition-transform active:scale-95"
             >
-              <Plus size={32} strokeWidth={2.5} />
+              <Plus size={28} strokeWidth={2.5} />
             </button>
           </div>
 
@@ -169,4 +224,3 @@ function NavIcon({
     </button>
   )
 }
-

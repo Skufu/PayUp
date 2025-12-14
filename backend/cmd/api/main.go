@@ -17,9 +17,15 @@ import (
 	"github.com/Skufu/PayUp/internal/db"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/server"
+	"github.com/joho/godotenv" // ADD THIS
 )
 
 func main() {
+	// Load .env file - ADD THIS BLOCK
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using environment variables")
+	}
+
 	cfg := config.Load()
 	if cfg.JWTSecret == "" {
 		cfg.JWTSecret = randomDevSecret()
