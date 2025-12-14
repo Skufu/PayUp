@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/joho/godotenv"
 	"github.com/pressly/goose/v3"
 )
 
@@ -14,6 +15,10 @@ func main() {
 	if len(os.Args) < 2 {
 		log.Fatalf("usage: %s <goose-command> [args...]", os.Args[0])
 	}
+
+	// Load local env files for developer convenience.
+	// In production, these files won't exist, and that's fine.
+	_ = godotenv.Load("../.env", ".env")
 
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
