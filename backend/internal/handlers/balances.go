@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/Skufu/PayUp/internal/auth"
+	"github.com/Skufu/PayUp/internal/balance"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
 	"github.com/gin-gonic/gin"
@@ -55,20 +57,35 @@ func (h *BalancesHandler) GetByGroup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to compute balances"})
 		return
 	}
-	balances := make(map[string]float64, len(members))
+	memberIDs := make([]string, 0, len(members))
 	for _, mid := range members {
-		balances[sqlcutil.UUIDToString(mid)] = 0
+		memberIDs = append(memberIDs, sqlcutil.UUIDToString(mid))
 	}
 
-	rows, err := h.Q.ComputeBalancesByGroup(ctx, groupID)
+	expRows, err := h.Q.ListExpensesByGroup(ctx, groupID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to compute balances"})
 		return
 	}
 
-	for _, row := range rows {
-		f, _ := strconv.ParseFloat(row.Balance, 64)
-		balances[sqlcutil.UUIDToString(row.UserID)] = f
+	expenses := make([]balance.Expense, 0, len(expRows))
+	for _, row := range expRows {
+		var splits map[string]float64
+		if err := json.Unmarshal([]byte(row.Splits), &splits); err != nil {
+			splits = map[string]float64{}
+		}
+		amt, _ := strconv.ParseFloat(row.Amount, 64)
+		expenses = append(expenses, balance.Expense{
+			PayerID: sqlcutil.UUIDToString(row.PayerID),
+			Amount:  amt,
+			Splits:  splits,
+		})
+	}
+
+	balances, err := balance.Compute(memberIDs, expenses)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to compute balances"})
+		return
 	}
 
 	c.JSON(http.StatusOK, balances)
