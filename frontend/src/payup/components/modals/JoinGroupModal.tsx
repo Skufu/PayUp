@@ -34,11 +34,12 @@ export function JoinGroupModal({ isOpen, onClose, onJoin }: Props) {
         setCode('')
         setSuccess(false)
       }, 1500)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Join error:', err)
+      const e = err as { status?: number; message?: string }
       
       // Parse error based on status
-      const status = err?.status || 0
+      const status = e?.status || 0
       if (status === 404) {
         setError('Invalid or expired invite code')
       } else if (status === 403) {
@@ -48,7 +49,7 @@ export function JoinGroupModal({ isOpen, onClose, onJoin }: Props) {
       } else if (status === 409) {
         setError('You are already a member of this group')
       } else {
-        setError(err?.message || 'Failed to join group')
+        setError(e?.message || 'Failed to join group')
       }
     } finally {
       setIsLoading(false)

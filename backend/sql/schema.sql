@@ -85,3 +85,24 @@ CREATE TABLE group_invites (
   expires_at timestamptz
 );
 
+CREATE TABLE nudges (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id    uuid NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  sender_id   uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  receiver_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  amount      numeric(12,2) NOT NULL CHECK (amount > 0),
+  message     text,
+  read        boolean NOT NULL DEFAULT false,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE push_subscriptions (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  endpoint   text NOT NULL,
+  p256dh     text NOT NULL,
+  auth       text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, endpoint)
+);
+

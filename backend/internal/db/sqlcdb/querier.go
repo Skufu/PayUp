@@ -17,23 +17,33 @@ type Querier interface {
 	CreateExpenseSplit(ctx context.Context, arg CreateExpenseSplitParams) error
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (CreateGroupRow, error)
 	CreateInvite(ctx context.Context, arg CreateInviteParams) error
+	CreateNudge(ctx context.Context, arg CreateNudgeParams) (Nudge, error)
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (CreatePaymentRow, error)
 	CreateTransferExpense(ctx context.Context, arg CreateTransferExpenseParams) (pgtype.UUID, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeleteExpense(ctx context.Context, id pgtype.UUID) error
+	DeletePushSubscription(ctx context.Context, arg DeletePushSubscriptionParams) error
 	GetExpenseForDelete(ctx context.Context, id pgtype.UUID) (GetExpenseForDeleteRow, error)
 	GetGroup(ctx context.Context, id pgtype.UUID) (GetGroupRow, error)
 	GetInviteByCode(ctx context.Context, code string) (GetInviteByCodeRow, error)
 	GetPaymentForUpdate(ctx context.Context, id pgtype.UUID) (GetPaymentForUpdateRow, error)
+	GetUnreadNudgeCount(ctx context.Context, receiverID pgtype.UUID) (int64, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error)
+	GetUserPublicProfile(ctx context.Context, id pgtype.UUID) (GetUserPublicProfileRow, error)
 	IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (bool, error)
 	ListExpensesByGroup(ctx context.Context, groupID pgtype.UUID) ([]ListExpensesByGroupRow, error)
 	ListGroupMemberIDs(ctx context.Context, groupID pgtype.UUID) ([]pgtype.UUID, error)
 	ListGroupMembers(ctx context.Context, groupID pgtype.UUID) ([]ListGroupMembersRow, error)
 	ListGroupsForUser(ctx context.Context, userID pgtype.UUID) ([]ListGroupsForUserRow, error)
+	ListNudgesForReceiver(ctx context.Context, arg ListNudgesForReceiverParams) ([]ListNudgesForReceiverRow, error)
 	ListPaymentsForReceiverByStatus(ctx context.Context, arg ListPaymentsForReceiverByStatusParams) ([]ListPaymentsForReceiverByStatusRow, error)
+	ListPushSubscriptionsForUser(ctx context.Context, userID pgtype.UUID) ([]ListPushSubscriptionsForUserRow, error)
+	MarkAllNudgesAsRead(ctx context.Context, receiverID pgtype.UUID) error
+	MarkNudgeAsRead(ctx context.Context, arg MarkNudgeAsReadParams) error
+	SavePushSubscription(ctx context.Context, arg SavePushSubscriptionParams) error
 	UpdatePaymentDecision(ctx context.Context, arg UpdatePaymentDecisionParams) error
+	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error
 }
 
 var _ Querier = (*Queries)(nil)

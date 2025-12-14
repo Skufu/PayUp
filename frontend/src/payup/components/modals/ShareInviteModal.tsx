@@ -1,5 +1,5 @@
 import { Check, Copy, Share2, X } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 type Props = {
   isOpen: boolean
@@ -15,13 +15,7 @@ export function ShareInviteModal({ isOpen, onClose, groupId, groupName, onGenera
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (isOpen && !inviteCode) {
-      generateCode()
-    }
-  }, [isOpen])
-
-  const generateCode = async () => {
+  const generateCode = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
@@ -33,7 +27,13 @@ export function ShareInviteModal({ isOpen, onClose, groupId, groupName, onGenera
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [groupId, onGenerateInvite])
+
+  useEffect(() => {
+    if (isOpen && !inviteCode) {
+      void generateCode()
+    }
+  }, [generateCode, inviteCode, isOpen])
 
   const inviteLink = inviteCode ? `${window.location.origin}/join/${inviteCode}` : ''
 

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: payup-api
+    env: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8080
+      # Set these in Render dashboard as "Secret" values:
+      # - DATABASE_URL
+      # - JWT_SECRET
+      # - CORS_ORIGINS
+      # - CLOUDINARY_CLOUD_NAME (optional)
+      # - CLOUDINARY_API_KEY (optional)
+      # - CLOUDINARY_API_SECRET (optional)

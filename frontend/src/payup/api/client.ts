@@ -60,7 +60,9 @@ async function rawRequest<T>(
   const url = `${baseUrl()}${path}`
 
   const headers = new Headers(init.headers)
-  if (!headers.has('Content-Type') && init.body) headers.set('Content-Type', 'application/json')
+  if (!headers.has('Content-Type') && init.body && !(init.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json')
+  }
 
   if (!init.skipAuth) {
     const tok = loadTokens()

@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Icon } from '@iconify/react'
 
 import type { ApiError } from '../../api/client'
 import { useAuth } from '../../auth/useAuth'
+import { PWAInstallGuide } from '../../components/PWAInstallGuide'
+import { markPWAGuideAsShown, useShouldShowPWAGuide } from '../../pwa/pwaGuide'
 
 export function LoginPage() {
   const { state, login } = useAuth()
@@ -16,6 +18,15 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  
+  // PWA Guide state
+  const shouldShowPWAGuide = useShouldShowPWAGuide()
+  const [showingPWAGuide, setShowingPWAGuide] = useState(true)
+
+  const handlePWAGuideContinue = useCallback(() => {
+    markPWAGuideAsShown()
+    setShowingPWAGuide(false)
+  }, [])
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,6 +41,11 @@ export function LoginPage() {
     } finally {
       setBusy(false)
     }
+  }
+
+  // Show PWA install guide on mobile first
+  if (shouldShowPWAGuide && showingPWAGuide) {
+    return <PWAInstallGuide onContinue={handlePWAGuideContinue} />
   }
 
   return (

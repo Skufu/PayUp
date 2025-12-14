@@ -13,3 +13,16 @@ SELECT id, email, name, avatar_url, qr_url, created_at, updated_at
 FROM users
 WHERE id = $1;
 
+-- name: UpdateUserProfile :exec
+UPDATE users
+SET
+  name = COALESCE($2, name),
+  qr_url = COALESCE($3, qr_url),
+  updated_at = NOW()
+WHERE id = $1;
+
+-- name: GetUserPublicProfile :one
+SELECT id, name, avatar_url, qr_url
+FROM users
+WHERE id = $1;
+

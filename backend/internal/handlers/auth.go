@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/Skufu/PayUp/internal/auth"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
+	"github.com/Skufu/PayUp/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -18,6 +20,8 @@ import (
 type AuthHandler struct {
 	Q      *sqlcdb.Queries
 	Issuer auth.Issuer
+
+	UploadService *services.UploadService
 }
 
 type registerRequest struct {
@@ -219,5 +223,76 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		QRURL:     u.QrUrl,
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
+	})
+}
+
+func (h *AuthHandler) UpdateProfile(c *gin.Context) {
+	uid, ok := mustUserID(c)
+	if !ok {
+		return
+	}
+
+	// Accept multipart/form-data for optional QR upload.
+	name := strings.TrimSpace(c.PostForm("name"))
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	defer cancel()
+
+	var qrPtr *string
+	if file, header, err := c.Request.FormFile("payment_qr"); err == nil {
+		defer file.Close()
+
+		if h.UploadService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "upload service not available"})
+			return
+		}
+
+		url, upErr := h.UploadService.UploadPaymentQR(ctx, file, header.Filename, uid.String())
+		if upErr != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("upload failed: %v", upErr)})
+			return
+		}
+		qrPtr = &url
+	}
+
+	var namePtr *string
+	if name != "" {
+		namePtr = &name
+	}
+
+	if err := h.Q.UpdateUserProfile(ctx, sqlcdb.UpdateUserProfileParams{
+		ID:    sqlcutil.UUID(uid),
+		Name:  namePtr,
+		QrUrl: qrPtr,
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update profile"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "profile updated"})
+}
+
+func (h *AuthHandler) GetUserPublicProfile(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	u, err := h.Q.GetUserPublicProfile(ctx, sqlcutil.UUID(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	// Keep response shape aligned with AuthUser fields.
+	c.JSON(http.StatusOK, gin.H{
+		"id":        sqlcutil.UUIDToString(u.ID),
+		"name":      u.Name,
+		"avatarUrl": u.AvatarUrl,
+		"qrUrl":     u.QrUrl,
 	})
 }

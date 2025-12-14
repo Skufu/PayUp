@@ -1,22 +1,28 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { Fonts } from './Fonts'
 import { AppShell } from './components/AppShell'
 import { NotificationView } from './components/NotificationView'
 import { WalletView } from './components/WalletView'
-import { AddExpenseModal } from './components/modals/AddExpenseModal'
-import { CreateGroupModal } from './components/modals/CreateGroupModal'
-import { JoinGroupModal } from './components/modals/JoinGroupModal'
-import { MembersModal } from './components/modals/MembersModal'
-import { MyQrModal } from './components/modals/MyQrModal'
-import { PaymentModal } from './components/modals/PaymentModal'
-import { ProfileModal } from './components/modals/ProfileModal'
-import { ShareInviteModal } from './components/modals/ShareInviteModal'
+import { OfflineIndicator } from './components/OfflineIndicator'
 import { SideMenu, SideMenuContent } from './components/modals/SideMenu'
 import { api } from './api/endpoints'
 import { useAuth } from './auth/useAuth'
+import { pushManager } from './push/pushManager'
 import type { Expense, Payment, User } from './types'
+
+// Lazy load modals - they are not needed on initial render
+const AddExpenseModal = lazy(() => import('./components/modals/AddExpenseModal').then(m => ({ default: m.AddExpenseModal })))
+const CreateGroupModal = lazy(() => import('./components/modals/CreateGroupModal').then(m => ({ default: m.CreateGroupModal })))
+const InstallPrompt = lazy(() => import('./components/modals/InstallPrompt').then(m => ({ default: m.InstallPrompt })))
+const JoinGroupModal = lazy(() => import('./components/modals/JoinGroupModal').then(m => ({ default: m.JoinGroupModal })))
+const MembersModal = lazy(() => import('./components/modals/MembersModal').then(m => ({ default: m.MembersModal })))
+const MyQrModal = lazy(() => import('./components/modals/MyQrModal').then(m => ({ default: m.MyQrModal })))
+const PaymentModal = lazy(() => import('./components/modals/PaymentModal').then(m => ({ default: m.PaymentModal })))
+const ProfileModal = lazy(() => import('./components/modals/ProfileModal').then(m => ({ default: m.ProfileModal })))
+const PushNotificationPrompt = lazy(() => import('./components/modals/PushNotificationPrompt').then(m => ({ default: m.PushNotificationPrompt })))
+const ShareInviteModal = lazy(() => import('./components/modals/ShareInviteModal').then(m => ({ default: m.ShareInviteModal })))
 
 type AddModalMode = 'expense' | 'transfer'
 
@@ -45,7 +51,7 @@ function initials(name: string): string {
 }
 
 export function PayUpApp() {
-  const { state: authState, logout } = useAuth()
+  const { state: authState, logout, refreshMe } = useAuth()
   const currentUser = authState.status === 'authed' ? authState.user : (null as unknown as User)
   const qc = useQueryClient()
 
@@ -70,6 +76,7 @@ export function PayUpApp() {
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false)
   const [isMyQrModalOpen, setIsMyQrModalOpen] = useState(false)
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [isPushPromptOpen, setIsPushPromptOpen] = useState(false)
 
   const groupsQuery = useQuery({
     queryKey: ['groups'],
@@ -123,6 +130,12 @@ export function PayUpApp() {
       })),
   })
 
+  const unreadNudgeCountQuery = useQuery({
+    queryKey: ['nudges', 'unread-count'],
+    queryFn: () => api.getUnreadNudgeCount(),
+    enabled: authState.status === 'authed',
+  })
+
   // 3) Active users
   const activeUsers = useMemo(() => {
     const members = groupDetailQuery.data?.members ?? []
@@ -159,92 +172,148 @@ export function PayUpApp() {
     }
   }, [effectiveGroupId, groupDetailQuery.data, groupsQuery.data])
 
-  // 5) Handlers
-  const handleCreateGroup = async (name: string) => {
+  // 5) Handlers - memoized with useCallback to prevent unnecessary re-renders
+  const handleCreateGroup = useCallback(async (name: string) => {
     const created = await api.createGroup(name)
     await qc.invalidateQueries({ queryKey: ['groups'] })
     setCurrentGroupId(created.id)
     setIsCreateGroupOpen(false)
-  }
+  }, [qc])
 
-  const handleAddExpense = async (expenseData: Omit<Expense, 'id' | 'createdAt'>) => {
+  const handleAddExpense = useCallback(async (expenseData: Omit<Expense, 'id' | 'createdAt'>) => {
     if (!effectiveGroupId) return
     await api.createExpense(effectiveGroupId, expenseData)
     await qc.invalidateQueries({ queryKey: ['expenses', effectiveGroupId] })
     await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
-  }
+  }, [effectiveGroupId, qc])
 
-  const handleDeleteExpense = async (expenseId: string) => {
+  const handleDeleteExpense = useCallback(async (expenseId: string) => {
     if (!effectiveGroupId) return
     if (!confirm('Delete this? Balances will be recalculated.')) return
     await api.deleteExpense(expenseId)
     await qc.invalidateQueries({ queryKey: ['expenses', effectiveGroupId] })
     await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
-  }
+  }, [effectiveGroupId, qc])
 
-  const handlePaymentSubmit = async (payeeId: string, amount: number) => {
+  const handlePaymentSubmit = useCallback(async (payeeId: string, amount: number, proofUrl?: string) => {
     if (!effectiveGroupId) return
-    await api.createPayment(effectiveGroupId, payeeId, amount)
+    await api.createPayment(effectiveGroupId, payeeId, amount, proofUrl)
     await qc.invalidateQueries({ queryKey: ['payments', 'pending'] })
-  }
+  }, [effectiveGroupId, qc])
 
-  const handleReviewPayment = async (paymentId: string, status: Payment['status']) => {
+  const handleReviewPayment = useCallback(async (paymentId: string, status: Payment['status']) => {
     if (!effectiveGroupId) return
     if (status === 'approved') await api.approvePayment(paymentId)
     if (status === 'rejected') await api.rejectPayment(paymentId)
     await qc.invalidateQueries({ queryKey: ['payments', 'pending'] })
     await qc.invalidateQueries({ queryKey: ['expenses', effectiveGroupId] })
     await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
-  }
+  }, [effectiveGroupId, qc])
 
-  const openAddModal = (mode: AddModalMode) => {
+  const handleNudge = useCallback(async (userId: string, amount: number) => {
+    if (!effectiveGroupId) return
+    const user = activeUsers.find((u) => u.id === userId)
+    const userName = user?.name || 'your friend'
+    if (!confirm(`Send a payment reminder to ${userName}?`)) return
+    await api.sendNudge(userId, effectiveGroupId, amount)
+  }, [effectiveGroupId, activeUsers])
+
+  const openAddModal = useCallback((mode: AddModalMode) => {
     setAddModalMode(mode)
     setIsAddModalOpen(true)
-  }
+  }, [])
 
-  const handleGenerateInvite = async (groupId: string) => {
+  const handleGenerateInvite = useCallback(async (groupId: string) => {
     const result = await api.createInvite(groupId)
     return result
-  }
+  }, [])
 
-  const handleJoinGroup = async (code: string) => {
+  const handleJoinGroup = useCallback(async (code: string) => {
     const result = await api.joinByCode(code)
     await qc.invalidateQueries({ queryKey: ['groups'] })
-    // Switch to the newly joined group
     setCurrentGroupId(result.groupId)
     setIsJoinGroupOpen(false)
-  }
+  }, [qc])
 
-  const pendingCount = payments.filter((p) => p.receiverId === currentUser.id && p.status === 'pending').length
+  // Memoized UI callbacks
+  const handleOpenMenu = useCallback(() => setIsMenuOpen(true), [])
+  const handleCloseMenu = useCallback(() => setIsMenuOpen(false), [])
+  const handleOpenCreateGroup = useCallback(() => setIsCreateGroupOpen(true), [])
+  const handleCloseCreateGroup = useCallback(() => setIsCreateGroupOpen(false), [])
+  const handleOpenJoinGroup = useCallback(() => setIsJoinGroupOpen(true), [])
+  const handleCloseJoinGroup = useCallback(() => setIsJoinGroupOpen(false), [])
+  const handleOpenProfile = useCallback(() => setIsProfileOpen(true), [])
+  const handleCloseProfile = useCallback(() => setIsProfileOpen(false), [])
+  const handleOpenMembers = useCallback(() => setIsMembersModalOpen(true), [])
+  const handleCloseMembers = useCallback(() => setIsMembersModalOpen(false), [])
+  const handleOpenMyQr = useCallback(() => setIsMyQrModalOpen(true), [])
+  const handleCloseMyQr = useCallback(() => setIsMyQrModalOpen(false), [])
+  const handleOpenInvite = useCallback(() => setIsInviteModalOpen(true), [])
+  const handleCloseInvite = useCallback(() => setIsInviteModalOpen(false), [])
+  const handleCloseAddModal = useCallback(() => setIsAddModalOpen(false), [])
+  const handleClosePushPrompt = useCallback(() => setIsPushPromptOpen(false), [])
+  const handleCentralAdd = useCallback(() => openAddModal('expense'), [openAddModal])
+  const handlePayClick = useCallback((uid: string, amt: number) => setPayModal({ open: true, payeeId: uid, amount: amt }), [])
+  const handleClosePayModal = useCallback(() => setPayModal((p) => ({ ...p, open: false })), [])
+  const handleSelectGroup = useCallback((g: { id: string }) => setCurrentGroupId(g.id), [])
+
+  const pendingCount =
+    payments.filter((p) => p.receiverId === currentUser.id && p.status === 'pending').length +
+    (unreadNudgeCountQuery.data?.count ?? 0)
+
+  // Memoize groups list to prevent recreating on every render
+  const groupsList = useMemo(() => {
+    return (groupsQuery.data ?? []).map((g) => ({
+      id: g.id,
+      name: g.name,
+      members: [] as string[],
+      createdAt: Date.parse(g.createdAt),
+    }))
+  }, [groupsQuery.data])
+
+  useEffect(() => {
+    if (authState.status !== 'authed') return
+    if (!('Notification' in window)) return
+
+    let timer: number | undefined
+    const run = async () => {
+      const permission = Notification.permission
+      const subscribed = await pushManager.isSubscribed()
+      if (permission === 'default' && !subscribed) {
+        timer = window.setTimeout(() => setIsPushPromptOpen(true), 5000)
+      }
+    }
+
+    void run()
+    return () => {
+      if (timer) window.clearTimeout(timer)
+    }
+  }, [authState.status])
 
   return (
     <>
+      <OfflineIndicator />
       <Fonts />
       <AppShell
         currentUser={currentUser}
-        onMenuClick={() => setIsMenuOpen(true)}
+        onMenuClick={handleOpenMenu}
         currentGroup={currentGroup}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         notificationCount={pendingCount}
-        onCentralAdd={() => openAddModal('expense')}
-        onOpenMembers={() => setIsMembersModalOpen(true)}
-        onOpenMyQr={() => setIsMyQrModalOpen(true)}
-        onOpenInvite={() => setIsInviteModalOpen(true)}
+        onCentralAdd={handleCentralAdd}
+        onOpenMembers={handleOpenMembers}
+        onOpenMyQr={handleOpenMyQr}
+        onOpenInvite={handleOpenInvite}
         onLogout={logout}
         sidebar={
           <SideMenuContent
-            groups={(groupsQuery.data ?? []).map((g) => ({
-              id: g.id,
-              name: g.name,
-              members: [],
-              createdAt: Date.parse(g.createdAt),
-            }))}
+            groups={groupsList}
             currentGroupId={currentGroup?.id}
-            onSelectGroup={(g) => setCurrentGroupId(g.id)}
-            onCreateGroup={() => setIsCreateGroupOpen(true)}
-            onJoinGroup={() => setIsJoinGroupOpen(true)}
-            onOpenProfile={() => setIsProfileOpen(true)}
+            onSelectGroup={handleSelectGroup}
+            onCreateGroup={handleOpenCreateGroup}
+            onJoinGroup={handleOpenJoinGroup}
+            onOpenProfile={handleOpenProfile}
             currentUser={currentUser}
           />
         }
@@ -256,7 +325,8 @@ export function PayUpApp() {
             activeUsers={activeUsers}
             currentGroup={currentGroup}
             expenses={expenses}
-            onPayClick={(uid, amt) => setPayModal({ open: true, payeeId: uid, amount: amt })}
+            onPayClick={handlePayClick}
+            onNudgeClick={handleNudge}
             onDeleteExpense={handleDeleteExpense}
           />
         )}
@@ -271,74 +341,79 @@ export function PayUpApp() {
         )}
       </AppShell>
 
-      {/* Modals & Overlays */}
+      {/* Modals & Overlays - Wrapped in Suspense for lazy loading */}
       <SideMenu
         isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
-        groups={(groupsQuery.data ?? []).map((g) => ({ id: g.id, name: g.name, members: [], createdAt: Date.parse(g.createdAt) }))}
+        onClose={handleCloseMenu}
+        groups={groupsList}
         currentGroupId={currentGroup?.id}
-        onSelectGroup={(g) => setCurrentGroupId(g.id)}
-        onCreateGroup={() => setIsCreateGroupOpen(true)}
-        onJoinGroup={() => setIsJoinGroupOpen(true)}
-        onOpenProfile={() => setIsProfileOpen(true)}
+        onSelectGroup={handleSelectGroup}
+        onCreateGroup={handleOpenCreateGroup}
+        onJoinGroup={handleOpenJoinGroup}
+        onOpenProfile={handleOpenProfile}
         currentUser={currentUser}
       />
 
-      {isCreateGroupOpen && (
-        <CreateGroupModal isOpen onClose={() => setIsCreateGroupOpen(false)} onConfirm={handleCreateGroup} />
-      )}
+      <Suspense fallback={null}>
+        {isCreateGroupOpen && (
+          <CreateGroupModal isOpen onClose={handleCloseCreateGroup} onConfirm={handleCreateGroup} />
+        )}
 
-      {isJoinGroupOpen && (
-        <JoinGroupModal isOpen onClose={() => setIsJoinGroupOpen(false)} onJoin={handleJoinGroup} />
-      )}
+        {isJoinGroupOpen && (
+          <JoinGroupModal isOpen onClose={handleCloseJoinGroup} onJoin={handleJoinGroup} />
+        )}
 
-      {isProfileOpen && (
-        <ProfileModal isOpen onClose={() => setIsProfileOpen(false)} currentUser={currentUser} onUpdateProfile={() => {}} />
-      )}
+        {isProfileOpen && (
+          <ProfileModal isOpen onClose={handleCloseProfile} currentUser={currentUser} onUpdateProfile={refreshMe} />
+        )}
 
-      {isAddModalOpen && (
-        <AddExpenseModal
-          isOpen
-          initialMode={addModalMode}
-          onClose={() => setIsAddModalOpen(false)}
-          currentUser={currentUser}
-          activeUsers={activeUsers}
-          onAdd={handleAddExpense}
-        />
-      )}
+        {isAddModalOpen && (
+          <AddExpenseModal
+            isOpen
+            initialMode={addModalMode}
+            onClose={handleCloseAddModal}
+            currentUser={currentUser}
+            activeUsers={activeUsers}
+            onAdd={handleAddExpense}
+          />
+        )}
 
-      {payModal.open && (
-        <PaymentModal
-          isOpen
-          onClose={() => setPayModal((p) => ({ ...p, open: false }))}
-          payeeId={payModal.payeeId}
-          amount={payModal.amount}
-          currentUser={currentUser}
-          activeUsers={activeUsers}
-          onSubmitPayment={handlePaymentSubmit}
-        />
-      )}
+        {payModal.open && (
+          <PaymentModal
+            isOpen
+            onClose={handleClosePayModal}
+            payeeId={payModal.payeeId}
+            amount={payModal.amount}
+            currentUser={currentUser}
+            activeUsers={activeUsers}
+            onSubmitPayment={handlePaymentSubmit}
+          />
+        )}
 
-      {isMembersModalOpen && (
-        <MembersModal
-          isOpen
-          onClose={() => setIsMembersModalOpen(false)}
-          activeUsers={activeUsers}
-          balances={balances}
-        />
-      )}
+        {isMembersModalOpen && (
+          <MembersModal
+            isOpen
+            onClose={handleCloseMembers}
+            activeUsers={activeUsers}
+            balances={balances}
+          />
+        )}
 
-      {isMyQrModalOpen && <MyQrModal isOpen onClose={() => setIsMyQrModalOpen(false)} currentUser={currentUser} />}
+        {isMyQrModalOpen && <MyQrModal isOpen onClose={handleCloseMyQr} currentUser={currentUser} />}
 
-      {isInviteModalOpen && currentGroup && (
-        <ShareInviteModal
-          isOpen
-          onClose={() => setIsInviteModalOpen(false)}
-          groupId={currentGroup.id}
-          groupName={currentGroup.name}
-          onGenerateInvite={handleGenerateInvite}
-        />
-      )}
+        {isInviteModalOpen && currentGroup && (
+          <ShareInviteModal
+            isOpen
+            onClose={handleCloseInvite}
+            groupId={currentGroup.id}
+            groupName={currentGroup.name}
+            onGenerateInvite={handleGenerateInvite}
+          />
+        )}
+
+        <InstallPrompt />
+        <PushNotificationPrompt isOpen={isPushPromptOpen} onClose={handleClosePushPrompt} />
+      </Suspense>
     </>
   )
 }

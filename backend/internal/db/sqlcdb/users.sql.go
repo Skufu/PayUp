@@ -100,3 +100,48 @@ func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDR
 	)
 	return i, err
 }
+
+const getUserPublicProfile = `-- name: GetUserPublicProfile :one
+SELECT id, name, avatar_url, qr_url
+FROM users
+WHERE id = $1
+`
+
+type GetUserPublicProfileRow struct {
+	ID        pgtype.UUID `json:"id"`
+	Name      *string     `json:"name"`
+	AvatarUrl *string     `json:"avatar_url"`
+	QrUrl     *string     `json:"qr_url"`
+}
+
+func (q *Queries) GetUserPublicProfile(ctx context.Context, id pgtype.UUID) (GetUserPublicProfileRow, error) {
+	row := q.db.QueryRow(ctx, getUserPublicProfile, id)
+	var i GetUserPublicProfileRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.AvatarUrl,
+		&i.QrUrl,
+	)
+	return i, err
+}
+
+const updateUserProfile = `-- name: UpdateUserProfile :exec
+UPDATE users
+SET
+  name = COALESCE($2, name),
+  qr_url = COALESCE($3, qr_url),
+  updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateUserProfileParams struct {
+	ID    pgtype.UUID `json:"id"`
+	Name  *string     `json:"name"`
+	QrUrl *string     `json:"qr_url"`
+}
+
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error {
+	_, err := q.db.Exec(ctx, updateUserProfile, arg.ID, arg.Name, arg.QrUrl)
+	return err
+}

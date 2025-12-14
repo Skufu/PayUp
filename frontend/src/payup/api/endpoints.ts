@@ -27,6 +27,21 @@ export const api = {
     return apiRequest<AuthUser>(`/v1/auth/me`)
   },
 
+  updateProfile(name?: string, paymentQRFile?: File) {
+    const form = new FormData()
+    if (name && name.trim()) form.append('name', name.trim())
+    if (paymentQRFile) form.append('payment_qr', paymentQRFile)
+    console.log('[API] updateProfile - sending name:', name, 'trimmed:', name?.trim())
+    console.log('[API] updateProfile - FormData entries:', Array.from(form.entries()))
+    return apiRequest<{ message: string }>(`/v1/auth/profile`, { method: 'PATCH', body: form })
+  },
+
+  getUserPublicProfile(userId: string) {
+    return apiRequest<{ id: string; name?: string | null; avatarUrl?: string | null; qrUrl?: string | null }>(
+      `/v1/users/${encodeURIComponent(userId)}/profile`,
+    )
+  },
+
   // Groups
   listGroups() {
     return apiRequest<Array<{ id: string; name: string; createdAt: string }>>(`/v1/groups`)
@@ -50,6 +65,49 @@ export const api = {
   },
   joinByCode(code: string) {
     return apiRequest<{ groupId: string }>(`/v1/groups/join/${encodeURIComponent(code)}`, { method: 'POST' })
+  },
+
+  // Nudges
+  sendNudge(debtorId: string, groupId: string, amount: number, message?: string) {
+    return apiRequest<{ id: string; message: string; createdAt: string }>(`/v1/nudges`, {
+      method: 'POST',
+      body: JSON.stringify({ debtorId, groupId, amount, message }),
+    })
+  },
+  listNudges() {
+    return apiRequest<
+      Array<{
+        id: string
+        groupId: string
+        groupName: string
+        senderId: string
+        senderName: string
+        amount: number
+        message: string
+        read: boolean
+        createdAt: string
+      }>
+    >(`/v1/nudges`)
+  },
+  getUnreadNudgeCount() {
+    return apiRequest<{ count: number }>(`/v1/nudges/unread-count`)
+  },
+  markNudgeRead(nudgeId: string) {
+    return apiRequest<void>(`/v1/nudges/${encodeURIComponent(nudgeId)}/read`, { method: 'PATCH' })
+  },
+  markAllNudgesRead() {
+    return apiRequest<void>(`/v1/nudges/mark-all-read`, { method: 'POST' })
+  },
+
+  // Push
+  subscribePush(endpoint: string, keys: { p256dh: string; auth: string }) {
+    return apiRequest<{ message: string }>(`/v1/push/subscribe`, {
+      method: 'POST',
+      body: JSON.stringify({ endpoint, keys }),
+    })
+  },
+  unsubscribePush(endpoint: string) {
+    return apiRequest<void>(`/v1/push/unsubscribe?endpoint=${encodeURIComponent(endpoint)}`, { method: 'DELETE' })
   },
 
   // Expenses
@@ -122,6 +180,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ groupId, receiverId, amount, proofUrl }),
     })
+  },
+  uploadPaymentProof(file: File) {
+    const form = new FormData()
+    form.append('proof', file)
+    return apiRequest<{ proofUrl: string }>(`/v1/payments/upload-proof`, { method: 'POST', body: form })
   },
   approvePayment(paymentId: string) {
     return apiRequest<void>(`/v1/payments/${encodeURIComponent(paymentId)}/approve`, { method: 'PATCH' })

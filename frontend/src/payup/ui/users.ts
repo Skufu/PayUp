@@ -33,7 +33,7 @@ export function uiUserFromAuth(u: AuthUser): User {
     name: display,
     avatar: initials(display),
     color,
-    qr: u.qrUrl ?? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PAYUP-${encodeURIComponent(u.id)}`,
+    qr: u.qrUrl ?? '',
   }
 }
 

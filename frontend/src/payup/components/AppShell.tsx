@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 import {
   Bell,
   ChevronDown,
@@ -30,7 +30,7 @@ type Props = {
   sidebar?: ReactNode
 }
 
-export function AppShell({
+export const AppShell = memo(function AppShell({
   children,
   currentUser,
   onMenuClick,
@@ -46,6 +46,10 @@ export function AppShell({
   sidebar,
 }: Props) {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const toggleProfile = useCallback(() => setIsProfileOpen(prev => !prev), [])
+  const closeProfile = useCallback(() => setIsProfileOpen(false), [])
+  const handleWalletTab = useCallback(() => onTabChange('wallet'), [onTabChange])
+  const handleNotificationsTab = useCallback(() => onTabChange('notifications'), [onTabChange])
 
   return (
     <div className="h-[100dvh] w-full bg-[#050507] font-mono flex md:flex-row overflow-hidden text-gray-100">
@@ -86,7 +90,7 @@ export function AppShell({
           {/* Desktop Navigation Tabs */}
           <div className="hidden md:flex items-center gap-1 bg-white/5 rounded-full p-1 border border-white/5 mx-4">
               <button
-                onClick={() => onTabChange('wallet')}
+                onClick={handleWalletTab}
                 className={`px-6 py-2 rounded-full text-xs font-bold transition-all ${
                   activeTab === 'wallet' 
                   ? 'bg-[#dfff4f] text-black shadow-lg shadow-[#dfff4f]/20' 
@@ -96,7 +100,7 @@ export function AppShell({
                 Wallet
               </button>
               <button
-                onClick={() => onTabChange('notifications')}
+                onClick={handleNotificationsTab}
                 className={`px-6 py-2 rounded-full text-xs font-bold transition-all relative ${
                   activeTab === 'notifications' 
                   ? 'bg-[#dfff4f] text-black shadow-lg shadow-[#dfff4f]/20' 
@@ -139,7 +143,7 @@ export function AppShell({
             {/* User Profile Dropdown */}
             <div className="relative pl-2 md:pl-0">
               <button
-                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                onClick={toggleProfile}
                 className="flex items-center gap-2 bg-white/5 px-2 py-1.5 rounded-full border border-white/10 hover:bg-white/10 transition-colors"
               >
                 <div
@@ -152,7 +156,7 @@ export function AppShell({
               
               {isProfileOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+                  <div className="fixed inset-0 z-40" onClick={closeProfile} />
                   <div className="absolute right-0 top-full mt-2 w-48 bg-[#131316] border border-white/10 rounded-xl shadow-xl overflow-hidden animate-slide-up z-50">
                     <div className="px-4 py-3 border-b border-white/5">
                       <div className="text-[10px] text-gray-500 uppercase tracking-wider">Signed in</div>
@@ -181,11 +185,11 @@ export function AppShell({
 
         {/* Bottom Nav - Mobile Only */}
         <div className="md:hidden border-t border-white/5 bg-[#0a0a0c]/90 backdrop-blur-lg pb-8 pt-2 px-6 flex justify-between items-center z-40 shrink-0">
-          <NavIcon icon={Wallet} active={activeTab === 'wallet'} onClick={() => onTabChange('wallet')} />
+          <NavIcon icon={Wallet} active={activeTab === 'wallet'} onClick={handleWalletTab} />
           <NavIcon
             icon={Bell}
             active={activeTab === 'notifications'}
-            onClick={() => onTabChange('notifications')}
+            onClick={handleNotificationsTab}
             badge={notificationCount}
           />
 
@@ -205,9 +209,9 @@ export function AppShell({
       </div>
     </div>
   )
-}
+})
 
-function NavIcon({
+const NavIcon = memo(function NavIcon({
   icon: Icon,
   active,
   onClick,
@@ -233,4 +237,4 @@ function NavIcon({
       )}
     </button>
   )
-}
+})

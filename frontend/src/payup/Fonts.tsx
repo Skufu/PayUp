@@ -1,8 +1,9 @@
+// Note: Google Fonts are loaded in index.html with preconnect for optimal performance
+// This component only provides CSS variables and utility classes
+
 export function Fonts() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&display=swap');
-      
       :root {
         --font-display: 'Syne', sans-serif;
         --font-mono: 'DM Mono', monospace;

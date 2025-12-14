@@ -99,6 +99,17 @@ type GroupMember struct {
 	JoinedAt pgtype.Timestamptz `json:"joined_at"`
 }
 
+type Nudge struct {
+	ID         pgtype.UUID        `json:"id"`
+	GroupID    pgtype.UUID        `json:"group_id"`
+	SenderID   pgtype.UUID        `json:"sender_id"`
+	ReceiverID pgtype.UUID        `json:"receiver_id"`
+	Amount     string             `json:"amount"`
+	Message    *string            `json:"message"`
+	Read       bool               `json:"read"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type Payment struct {
 	ID         pgtype.UUID        `json:"id"`
 	GroupID    pgtype.UUID        `json:"group_id"`
@@ -111,6 +122,15 @@ type Payment struct {
 	DecidedAt  pgtype.Timestamptz `json:"decided_at"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PushSubscription struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Endpoint  string             `json:"endpoint"`
+	P256dh    string             `json:"p256dh"`
+	Auth      string             `json:"auth"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type User struct {

@@ -29,7 +29,13 @@ export function MyQrModal({ isOpen, onClose, currentUser }: Props) {
         <p className="font-mono text-sm opacity-70 mb-8 uppercase tracking-widest">Scan to Pay Me</p>
 
         <div className="bg-white p-4 rounded-2xl shadow-xl rotate-1 hover:rotate-0 transition-transform duration-300">
-          <img src={currentUser.qr} className="w-full mix-blend-multiply" alt="QR" />
+          {currentUser.qr ? (
+            <img src={currentUser.qr} className="w-full mix-blend-multiply" alt="QR" />
+          ) : (
+            <div className="w-full aspect-square flex items-center justify-center text-gray-700 font-mono text-xs">
+              No QR uploaded yet
+            </div>
+          )}
         </div>
 
         <div className="mt-8 flex justify-center gap-4">

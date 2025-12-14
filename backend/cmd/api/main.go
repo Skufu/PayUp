@@ -17,6 +17,7 @@ import (
 	"github.com/Skufu/PayUp/internal/db"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/server"
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv" // ADD THIS
 )
 
@@ -25,6 +26,9 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
+
+	// Force Gin out of debug mode, regardless of GIN_MODE from .env/env-vars.
+	gin.SetMode(gin.ReleaseMode)
 
 	cfg := config.Load()
 	if cfg.JWTSecret == "" {

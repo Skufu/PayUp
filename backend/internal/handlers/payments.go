@@ -9,6 +9,7 @@ import (
 	"github.com/Skufu/PayUp/internal/auth"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
+	"github.com/Skufu/PayUp/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +18,8 @@ import (
 type PaymentsHandler struct {
 	Pool *pgxpool.Pool
 	Q    *sqlcdb.Queries
+
+	UploadService *services.UploadService
 }
 
 type createPaymentRequest struct {
@@ -266,4 +269,35 @@ func deref(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+func (h *PaymentsHandler) UploadProof(c *gin.Context) {
+	_, ok := mustUserID(c)
+	if !ok {
+		return
+	}
+
+	file, header, err := c.Request.FormFile("proof")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no file uploaded"})
+		return
+	}
+	defer file.Close()
+
+	if h.UploadService == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "upload service not available"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	defer cancel()
+
+	proofID := uuid.NewString()
+	url, err := h.UploadService.UploadPaymentProof(ctx, file, header.Filename, proofID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "upload failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"proofUrl": url})
 }

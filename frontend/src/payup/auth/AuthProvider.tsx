@@ -43,6 +43,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         saveTokens(t)
         setState({ status: 'authed', user: uiUserFromAuth(res.user), tokens: t })
       },
+      async refreshMe() {
+        const tok = loadTokens()
+        if (!tok) return
+        const me = await api.me()
+        console.log('[AuthProvider] refreshMe - API response:', me)
+        const uiUser = uiUserFromAuth(me)
+        console.log('[AuthProvider] refreshMe - UI user:', uiUser)
+        setState({ status: 'authed', user: uiUser, tokens: tok })
+      },
       logout() {
         saveTokens(null)
         setState({ status: 'anon', user: null, tokens: null })

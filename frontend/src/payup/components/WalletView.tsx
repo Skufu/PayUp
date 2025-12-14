@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { ArrowRight, Check, Smartphone, Trash2 } from 'lucide-react'
 
 import type { Expense, Group, User } from '../types'
@@ -9,16 +10,18 @@ type Props = {
   currentGroup: Group | null
   expenses: Expense[]
   onPayClick: (userId: string, amount: number) => void
+  onNudgeClick: (userId: string, amount: number) => void
   onDeleteExpense: (expenseId: string) => void
 }
 
-export function WalletView({
+export const WalletView = memo(function WalletView({
   balances,
   currentUser,
   activeUsers,
   currentGroup,
   expenses,
   onPayClick,
+  onNudgeClick,
   onDeleteExpense,
 }: Props) {
   return (
@@ -31,7 +34,13 @@ export function WalletView({
 
         {/* Desktop Settlements List - Only visible if there are settlements */}
         <section className="hidden md:block">
-           <SettlementList balances={balances} currentUser={currentUser} activeUsers={activeUsers} onPayClick={onPayClick} />
+           <SettlementList
+             balances={balances}
+             currentUser={currentUser}
+             activeUsers={activeUsers}
+             onPayClick={onPayClick}
+             onNudgeClick={onNudgeClick}
+           />
         </section>
       </div>
 
@@ -39,7 +48,13 @@ export function WalletView({
       <div className="md:col-span-8 xl:col-span-9">
         {/* Mobile Settlements - Visible only on mobile */}
         <section className="md:hidden mb-8">
-           <SettlementList balances={balances} currentUser={currentUser} activeUsers={activeUsers} onPayClick={onPayClick} />
+           <SettlementList
+             balances={balances}
+             currentUser={currentUser}
+             activeUsers={activeUsers}
+             onPayClick={onPayClick}
+             onNudgeClick={onNudgeClick}
+           />
         </section>
 
         <section className="bg-[#131316]/50 rounded-3xl border border-white/5 overflow-hidden min-h-[500px]">
@@ -76,9 +91,9 @@ export function WalletView({
       </div>
     </div>
   )
-}
+})
 
-function BalanceCard({ balances, currentUser }: { balances: Record<string, number>; currentUser: User }) {
+const BalanceCard = memo(function BalanceCard({ balances, currentUser }: { balances: Record<string, number>; currentUser: User }) {
   const myBalance = balances[currentUser.id] || 0
   const isOwed = myBalance > 0
   const isDebt = myBalance < 0
@@ -151,18 +166,20 @@ function BalanceCard({ balances, currentUser }: { balances: Record<string, numbe
       </div>
     </div>
   )
-}
+})
 
-function SettlementList({
+const SettlementList = memo(function SettlementList({
   balances,
   currentUser,
   activeUsers,
   onPayClick,
+  onNudgeClick,
 }: {
   balances: Record<string, number>
   currentUser: User
   activeUsers: User[]
   onPayClick: (userId: string, amount: number) => void
+  onNudgeClick: (userId: string, amount: number) => void
 }) {
     const settlements = Object.entries(balances)
     .filter(([userId, amount]) => {
@@ -182,7 +199,7 @@ function SettlementList({
              return { type: 'pay', user: userObj, amount: Math.min(Math.abs(myNet), amount) }
          }
          if (myNet > 1 && amount < -1) {
-             return { type: 'collect', user: userObj, amount: 0 }
+             return { type: 'collect', user: userObj, amount: Math.min(myNet, Math.abs(amount)) }
          }
          return null
     })
@@ -256,7 +273,10 @@ function SettlementList({
                       <p className="text-[10px] text-gray-600 font-mono">Owes you</p>
                     </div>
                   </div>
-                  <button className="text-[#ff4f99] text-[10px] font-bold font-mono px-3 py-1.5 rounded border border-[#ff4f99]/30 hover:bg-[#ff4f99]/10 transition-colors uppercase tracking-wider shrink-0">
+                  <button
+                    onClick={() => onNudgeClick(item.user.id, item.amount)}
+                    className="text-[#ff4f99] text-[10px] font-bold font-mono px-3 py-1.5 rounded border border-[#ff4f99]/30 hover:bg-[#ff4f99]/10 transition-colors uppercase tracking-wider shrink-0"
+                  >
                     Nudge
                   </button>
                 </div>
@@ -266,9 +286,9 @@ function SettlementList({
       })}
     </div>
   )
-}
+})
 
-function ExpenseItem({
+const ExpenseItem = memo(function ExpenseItem({
   expense,
   currentUser,
   activeUsers,
@@ -366,4 +386,4 @@ function ExpenseItem({
       )}
     </div>
   )
-}
+})

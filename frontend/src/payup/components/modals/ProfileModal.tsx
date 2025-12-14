@@ -1,18 +1,27 @@
-import { Camera, MoreHorizontal, QrCode, Upload, X } from 'lucide-react'
-import { useState } from 'react'
+import { AlertCircle, Camera, CheckCircle, MoreHorizontal, QrCode, Upload, X } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
 
+import { api } from '../../api/endpoints'
+import type { ApiError } from '../../api/client'
 import type { User } from '../../types'
 
 type Props = {
   isOpen: boolean
   onClose: () => void
   currentUser: User
-  onUpdateProfile: (u: User) => void
+  onUpdateProfile: () => void
 }
 
 export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: Props) {
   const [name, setName] = useState(currentUser.name)
-  const [qrUrl, setQrUrl] = useState(currentUser.qr)
+  const [qrFile, setQrFile] = useState<File | null>(null)
+  const [qrPreview, setQrPreview] = useState<string>(currentUser.qr)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const hasQR = useMemo(() => !!(qrPreview && qrPreview.trim()), [qrPreview])
 
   if (!isOpen) return null
 
@@ -58,31 +67,92 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
             <h3 className="text-xs font-mono text-gray-400 mb-4 flex items-center justify-center gap-2">
               <QrCode size={14} /> YOUR GCASH QR
             </h3>
-            <div className="w-48 h-48 mx-auto bg-white p-4 rounded-xl mb-4 relative shadow-lg">
-              <img src={qrUrl} alt="QR" className="w-full h-full mix-blend-multiply object-cover" />
+            <div
+              className="w-48 h-48 mx-auto bg-white p-4 rounded-xl mb-4 relative shadow-lg cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {hasQR ? (
+                <img src={qrPreview} alt="QR" className="w-full h-full mix-blend-multiply object-contain" />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-600">
+                  <Upload size={28} className="mb-2" />
+                  <span className="text-xs font-mono">Upload QR</span>
+                </div>
+              )}
               <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl cursor-pointer backdrop-blur-[2px]">
                 <Upload size={24} className="text-white mb-2" />
-                <span className="text-[10px] font-bold text-white uppercase tracking-wider">Change QR</span>
+                <span className="text-[10px] font-bold text-white uppercase tracking-wider">{hasQR ? 'Change QR' : 'Upload QR'}</span>
               </div>
             </div>
-            <label className="text-[10px] uppercase text-gray-500 font-mono mb-2 block tracking-wider">QR URL</label>
+
             <input
-              type="url"
-              value={qrUrl}
-              onChange={(e) => setQrUrl(e.target.value)}
-              className="w-full bg-[#131316] border border-white/10 rounded-xl px-3 py-2 text-white text-xs font-mono focus:outline-none focus:border-[#dfff4f]"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                if (!file.type.startsWith('image/')) return
+                if (file.size > 5 * 1024 * 1024) return
+                setQrFile(file)
+                const reader = new FileReader()
+                reader.onload = () => setQrPreview(String(reader.result ?? ''))
+                reader.readAsDataURL(file)
+              }}
             />
-            <p className="text-[10px] text-gray-500 mt-2">Paste a new QR image URL for now.</p>
+
+            <p className="text-[10px] text-gray-500 mt-2">Upload JPG/PNG/WEBP (max 5MB). Stored securely in Cloudinary.</p>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 bg-[#ff4f99]/10 border border-[#ff4f99]/20 rounded-xl flex items-start gap-2 text-sm text-[#ff4f99]">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {success && (
+            <div className="mb-4 p-3 bg-[#dfff4f]/10 border border-[#dfff4f]/20 rounded-xl flex items-center gap-2 text-sm text-[#dfff4f]">
+              <CheckCircle size={16} className="shrink-0" />
+              <span>Profile updated successfully!</span>
+            </div>
+          )}
+
           <button
+            type="button"
+            disabled={saving}
             onClick={() => {
-              onUpdateProfile({ ...currentUser, name: name.trim() || currentUser.name, qr: qrUrl.trim() || currentUser.qr })
-              onClose()
+              console.log('[ProfileModal] Button clicked!')
+              console.log('[ProfileModal] Current state - saving:', saving, 'name:', name)
+              setError(null)
+              setSuccess(false)
+              setSaving(true)
+              
+              const doSave = async () => {
+                try {
+                  console.log('[ProfileModal] Saving name:', name)
+                  const result = await api.updateProfile(name, qrFile ?? undefined)
+                  console.log('[ProfileModal] API response:', result)
+                  await onUpdateProfile()
+                  console.log('[ProfileModal] Profile refreshed')
+                  setSuccess(true)
+                  setTimeout(() => onClose(), 800)
+                } catch (ex: unknown) {
+                  console.error('[ProfileModal] Error:', ex)
+                  const apiErr = ex as ApiError
+                  setError(apiErr?.message || (ex instanceof Error ? ex.message : 'Failed to update profile'))
+                } finally {
+                  setSaving(false)
+                }
+              }
+              void doSave()
             }}
-            className="w-full py-4 bg-[#1c1c21] hover:bg-[#dfff4f] hover:text-black border border-white/10 rounded-xl font-bold font-mono transition-all uppercase tracking-widest acid-border"
+            className="w-full py-4 bg-[#1c1c21] hover:bg-[#dfff4f] hover:text-black border border-white/10 rounded-xl font-bold font-mono transition-all uppercase tracking-widest acid-border disabled:opacity-50"
           >
-            Save Changes
+            {saving ? 'Saving...' : success ? 'Saved!' : 'Save Changes'}
           </button>
         </div>
       </div>
