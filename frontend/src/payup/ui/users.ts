@@ -37,9 +37,9 @@ export function uiUserFromAuth(u: AuthUser): User {
   }
 }
 
-export function uiUserFromID(id: string): User {
+export function uiUserFromID(id: string, name?: string): User {
   const color = COLORS[hashString(id) % COLORS.length]
-  const display = `User ${id.slice(0, 6)}`
+  const display = name || `User ${id.slice(0, 6)}`
   return {
     id,
     name: display,

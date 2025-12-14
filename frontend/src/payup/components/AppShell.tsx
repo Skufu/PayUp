@@ -45,6 +45,7 @@ export function AppShell({
   onLogout,
   sidebar,
 }: Props) {
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   return (
     <div className="h-[100dvh] w-full bg-[#050507] font-mono flex md:flex-row overflow-hidden text-gray-100">
@@ -136,8 +137,11 @@ export function AppShell({
             </div>
 
             {/* User Profile Dropdown */}
-            <div className="relative group pl-2 md:pl-0">
-              <button className="flex items-center gap-2 bg-white/5 px-2 py-1.5 rounded-full border border-white/10 hover:bg-white/10 transition-colors">
+            <div className="relative pl-2 md:pl-0">
+              <button
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="flex items-center gap-2 bg-white/5 px-2 py-1.5 rounded-full border border-white/10 hover:bg-white/10 transition-colors"
+              >
                 <div
                   className={`w-6 h-6 rounded-full ${currentUser.color} flex items-center justify-center text-[10px] text-black font-bold`}
                 >
@@ -145,19 +149,25 @@ export function AppShell({
                 </div>
                 <ChevronDown size={12} className="text-gray-400" />
               </button>
-              <div className="absolute right-0 top-full mt-2 w-48 bg-[#131316] border border-white/10 rounded-xl shadow-xl overflow-hidden hidden group-hover:block animate-slide-up z-50">
-                <div className="px-4 py-3 border-b border-white/5">
-                  <div className="text-[10px] text-gray-500 uppercase tracking-wider">Signed in</div>
-                  <div className="text-sm text-white font-mono truncate">{currentUser.name}</div>
-                </div>
-                <button
-                  onClick={onLogout}
-                  className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center gap-3 transition-colors"
-                >
-                  <LogOut size={16} className="text-gray-400" />
-                  <span className="text-sm font-mono text-gray-200">Log out</span>
-                </button>
-              </div>
+              
+              {isProfileOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-[#131316] border border-white/10 rounded-xl shadow-xl overflow-hidden animate-slide-up z-50">
+                    <div className="px-4 py-3 border-b border-white/5">
+                      <div className="text-[10px] text-gray-500 uppercase tracking-wider">Signed in</div>
+                      <div className="text-sm text-white font-mono truncate">{currentUser.name}</div>
+                    </div>
+                    <button
+                      onClick={onLogout}
+                      className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-center gap-3 transition-colors"
+                    >
+                      <LogOut size={16} className="text-gray-400" />
+                      <span className="text-sm font-mono text-gray-200">Log out</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

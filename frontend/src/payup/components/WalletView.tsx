@@ -291,63 +291,77 @@ function ExpenseItem({
           isPayer ? 'bg-[#dfff4f]' : isTransfer ? 'bg-[#ff4f99]' : 'bg-[#1c1c21]'
         }`}
       />
-      <div className="flex justify-between items-start mb-2">
-        <div>
-          <div className="flex items-center gap-2">
-            <h4 className={`font-bold text-base ${isTransfer ? 'text-[#ff4f99]' : 'text-white'}`}>{expense.title}</h4>
+      <div className="flex justify-between items-start">
+        <div className="flex-1 min-w-0 mr-4">
+          <div className="flex items-center gap-2 mb-1">
+            <h4 className={`font-bold text-base truncate ${isTransfer ? 'text-[#ff4f99]' : 'text-white'}`}>{expense.title}</h4>
             {isTransfer && (
-              <span className="text-[9px] bg-[#ff4f99]/20 text-[#ff4f99] px-1.5 rounded border border-[#ff4f99]/30">
+              <span className="text-[9px] bg-[#ff4f99]/20 text-[#ff4f99] px-1.5 rounded border border-[#ff4f99]/30 shrink-0">
                 TRANSFER
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-500 font-mono mt-0.5">
-            {isPayer ? 'You paid ' : `${payer.name} paid `}
+          <p className="text-xs text-gray-500 font-mono flex items-center gap-1">
+            <span className={isPayer ? 'text-[#dfff4f]' : 'text-gray-400'}>{isPayer ? 'You' : payer.name}</span>
+            <span>paid</span>
             <span className="text-white font-bold">
               {expense.amount.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
             </span>
           </p>
         </div>
-        <div className="text-right">
-          {isPayer && (
-            <button
-              onClick={() => onDelete(expense.id)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-red-500 hover:bg-white/5 rounded-full"
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
+        
+        <div className="flex items-start gap-3 shrink-0">
+            {/* Context Badge (Owe/Receive) */}
+            {!isPayer && myShare > 0 && !isTransfer && (
+                <div className="px-2 py-1 rounded bg-[#ff4f99]/10 border border-[#ff4f99]/20 flex flex-col items-end">
+                <span className="text-[8px] text-[#ff4f99]/70 font-mono uppercase leading-none mb-0.5">You Owe</span>
+                <span className="text-xs text-[#ff4f99] font-mono font-bold leading-none">
+                    {myShare.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
+                </span>
+                </div>
+            )}
+            {isTransfer && !isPayer && myShare > 0 && (
+                <div className="px-2 py-1 rounded bg-[#dfff4f]/10 border border-[#dfff4f]/20 flex flex-col items-end">
+                <span className="text-[8px] text-[#dfff4f]/70 font-mono uppercase leading-none mb-0.5">Received</span>
+                <span className="text-xs text-[#dfff4f] font-mono font-bold leading-none">
+                    {myShare.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
+                </span>
+                </div>
+            )}
+
+            {isPayer && (
+                <button
+                onClick={() => onDelete(expense.id)}
+                className="p-2 text-gray-600 hover:text-red-500 hover:bg-white/5 rounded-lg transition-colors md:opacity-0 md:group-hover:opacity-100"
+                >
+                <Trash2 size={16} />
+                </button>
+            )}
         </div>
       </div>
-      {!isPayer && myShare > 0 && !isTransfer && (
-        <div className="inline-block px-2 py-1 rounded bg-[#ff4f99]/10 border border-[#ff4f99]/20">
-          <p className="text-[10px] text-[#ff4f99] font-mono font-bold">
-            YOU OWE {myShare.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
-          </p>
-        </div>
-      )}
-      {isTransfer && !isPayer && myShare > 0 && (
-        <div className="inline-block px-2 py-1 rounded bg-[#dfff4f]/10 border border-[#dfff4f]/20">
-          <p className="text-[10px] text-[#dfff4f] font-mono font-bold">
-            RECEIVED {myShare.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
-          </p>
-        </div>
-      )}
+
+      {/* Involved Users Avatars */}
       {isPayer && !isTransfer && (
-        <div className="flex -space-x-2 mt-2 pl-1">
-          {Object.keys(expense.splits).map((uid) => {
-            const u = activeUsers.find((usr) => usr.id === uid)
-            if (!u) return null
-            return (
-              <div
-                key={uid}
-                className={`w-5 h-5 rounded-full border border-[#0a0a0c] ${u.color} flex items-center justify-center text-[8px] text-black font-bold`}
-                title={u.name}
-              >
-                {u.avatar}
-              </div>
-            )
-          })}
+        <div className="mt-3 flex items-center gap-1.5">
+          <span className="text-[9px] text-gray-600 font-mono uppercase tracking-wider mr-1">Split with</span>
+          <div className="flex -space-x-2 hover:space-x-0.5 transition-all">
+            {Object.keys(expense.splits).map((uid) => {
+              const u = activeUsers.find((usr) => usr.id === uid)
+              if (!u) return null
+              // Don't show payer in the split list if it's just them (though logic prevents this usually)
+              if (uid === currentUser.id) return null 
+              
+              return (
+                <div
+                  key={uid}
+                  className={`w-6 h-6 rounded-full border border-[#131316] ${u.color} flex items-center justify-center text-[9px] text-black font-bold ring-2 ring-[#131316]`}
+                  title={u.name}
+                >
+                  {u.avatar}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>

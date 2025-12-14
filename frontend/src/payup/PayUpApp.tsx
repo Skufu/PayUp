@@ -17,9 +17,32 @@ import { SideMenu, SideMenuContent } from './components/modals/SideMenu'
 import { api } from './api/endpoints'
 import { useAuth } from './auth/useAuth'
 import type { Expense, Payment, User } from './types'
-import { uiUserFromID } from './ui/users'
 
 type AddModalMode = 'expense' | 'transfer'
+
+const COLORS = [
+  'bg-blue-500',
+  'bg-pink-500',
+  'bg-purple-500',
+  'bg-green-500',
+  'bg-yellow-500',
+  'bg-orange-500',
+  'bg-teal-500',
+  'bg-indigo-500',
+] as const
+
+function hashString(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
+  return Math.abs(h)
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase()
+  return (parts[0].slice(0, 1) + parts[parts.length - 1].slice(0, 1)).toUpperCase()
+}
 
 export function PayUpApp() {
   const { state: authState, logout } = useAuth()
@@ -103,7 +126,19 @@ export function PayUpApp() {
   // 3) Active users
   const activeUsers = useMemo(() => {
     const members = groupDetailQuery.data?.members ?? []
-    const list = members.map((m) => uiUserFromID(m.userId))
+    
+    // Map members with real user data from backend
+    const list = members.map((m) => {
+      const displayName = m.name || `User ${m.userId.slice(0, 6)}`
+      return {
+        id: m.userId,
+        name: displayName,
+        avatar: initials(displayName),
+        color: COLORS[hashString(m.userId) % COLORS.length],
+        qr: m.avatarUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PAYUP-${encodeURIComponent(m.userId)}`,
+      }
+    })
+    
     // During initial load, keep UI functional
     if (list.length === 0) return [currentUser]
     return list

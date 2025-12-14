@@ -27,8 +27,15 @@ FROM groups
 WHERE id = $1;
 
 -- name: ListGroupMembers :many
-SELECT user_id, role, joined_at
-FROM group_members
-WHERE group_id = $1
-ORDER BY joined_at ASC;
+SELECT
+  gm.user_id,
+  gm.role,
+  gm.joined_at,
+  u.name AS user_name,
+  u.email AS user_email,
+  u.avatar_url AS user_avatar_url
+FROM group_members gm
+JOIN users u ON u.id = gm.user_id
+WHERE gm.group_id = $1
+ORDER BY gm.joined_at ASC;
 

@@ -35,13 +35,13 @@ export function MembersModal({ isOpen, onClose, activeUsers, balances }: Props) 
                   <div className={`w-10 h-10 rounded-full ${user.color} flex items-center justify-center text-black font-bold`}>
                     {user.avatar}
                   </div>
-                  <span className="font-bold text-white">{user.name}</span>
+                  <span className="font-bold text-white text-sm">{user.name}</span>
                 </div>
                 <div className={`text-right ${isPositive ? 'text-[#dfff4f]' : isNegative ? 'text-[#ff4f99]' : 'text-gray-500'}`}>
-                  <span className="text-xs font-mono block uppercase opacity-70">
+                  <span className="text-[10px] font-mono block uppercase opacity-70 mb-0.5">
                     {isPositive ? 'Is Owed' : isNegative ? 'Owes' : 'Settled'}
                   </span>
-                  <span className="font-mono font-bold">
+                  <span className="font-mono font-bold text-sm">
                     {Math.abs(bal).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
                   </span>
                 </div>

@@ -38,9 +38,12 @@ export const api = {
     })
   },
   groupDetail(groupId: string) {
-    return apiRequest<{ id: string; name: string; createdAt: string; members: Array<{ userId: string; role: string; joinedAt: string }> }>(
-      `/v1/groups/${encodeURIComponent(groupId)}`,
-    )
+    return apiRequest<{
+      id: string
+      name: string
+      createdAt: string
+      members: Array<{ userId: string; name?: string; avatarUrl?: string; role: string; joinedAt: string }>
+    }>(`/v1/groups/${encodeURIComponent(groupId)}`)
   },
   createInvite(groupId: string) {
     return apiRequest<{ code: string; expiresAt?: string }>(`/v1/groups/${encodeURIComponent(groupId)}/invite`, { method: 'POST' })

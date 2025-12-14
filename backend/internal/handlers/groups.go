@@ -32,9 +32,11 @@ type groupResponse struct {
 }
 
 type groupMemberResponse struct {
-	UserID   string    `json:"userId"`
-	Role     string    `json:"role"`
-	JoinedAt time.Time `json:"joinedAt"`
+	UserID    string    `json:"userId"`
+	Name      string    `json:"name"`
+	AvatarUrl string    `json:"avatarUrl"`
+	Role      string    `json:"role"`
+	JoinedAt  time.Time `json:"joinedAt"`
 }
 
 type groupDetailResponse struct {
@@ -175,13 +177,29 @@ func (h *GroupsHandler) Detail(c *gin.Context) {
 		return
 	}
 
-	members := make([]groupMemberResponse, 0, 8)
+	members := make([]groupMemberResponse, 0, len(rows))
 	for _, m := range rows {
 		joinedAt, _ := sqlcutil.Time(m.JoinedAt)
+
+		// Use joined user data from SQL query
+		name := ""
+		if m.UserName != nil && *m.UserName != "" {
+			name = *m.UserName
+		} else {
+			name = m.UserEmail
+		}
+
+		avatar := ""
+		if m.UserAvatarUrl != nil {
+			avatar = *m.UserAvatarUrl
+		}
+
 		members = append(members, groupMemberResponse{
-			UserID:   sqlcutil.UUIDToString(m.UserID),
-			Role:     m.Role,
-			JoinedAt: joinedAt,
+			UserID:    sqlcutil.UUIDToString(m.UserID),
+			Name:      name,
+			AvatarUrl: avatar,
+			Role:      m.Role,
+			JoinedAt:  joinedAt,
 		})
 	}
 

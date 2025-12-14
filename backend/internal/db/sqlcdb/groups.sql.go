@@ -91,16 +91,26 @@ func (q *Queries) IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (b
 }
 
 const listGroupMembers = `-- name: ListGroupMembers :many
-SELECT user_id, role, joined_at
-FROM group_members
-WHERE group_id = $1
-ORDER BY joined_at ASC
+SELECT
+  gm.user_id,
+  gm.role,
+  gm.joined_at,
+  u.name AS user_name,
+  u.email AS user_email,
+  u.avatar_url AS user_avatar_url
+FROM group_members gm
+JOIN users u ON u.id = gm.user_id
+WHERE gm.group_id = $1
+ORDER BY gm.joined_at ASC
 `
 
 type ListGroupMembersRow struct {
-	UserID   pgtype.UUID        `json:"user_id"`
-	Role     string             `json:"role"`
-	JoinedAt pgtype.Timestamptz `json:"joined_at"`
+	UserID        pgtype.UUID        `json:"user_id"`
+	Role          string             `json:"role"`
+	JoinedAt      pgtype.Timestamptz `json:"joined_at"`
+	UserName      *string            `json:"user_name"`
+	UserEmail     string             `json:"user_email"`
+	UserAvatarUrl *string            `json:"user_avatar_url"`
 }
 
 func (q *Queries) ListGroupMembers(ctx context.Context, groupID pgtype.UUID) ([]ListGroupMembersRow, error) {
@@ -112,7 +122,14 @@ func (q *Queries) ListGroupMembers(ctx context.Context, groupID pgtype.UUID) ([]
 	var items []ListGroupMembersRow
 	for rows.Next() {
 		var i ListGroupMembersRow
-		if err := rows.Scan(&i.UserID, &i.Role, &i.JoinedAt); err != nil {
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Role,
+			&i.JoinedAt,
+			&i.UserName,
+			&i.UserEmail,
+			&i.UserAvatarUrl,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
