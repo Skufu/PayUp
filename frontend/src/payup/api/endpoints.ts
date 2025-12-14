@@ -46,7 +46,7 @@ export const api = {
     return apiRequest<{ code: string; expiresAt?: string }>(`/v1/groups/${encodeURIComponent(groupId)}/invite`, { method: 'POST' })
   },
   joinByCode(code: string) {
-    return apiRequest<void>(`/v1/groups/join/${encodeURIComponent(code)}`, { method: 'POST' })
+    return apiRequest<{ groupId: string }>(`/v1/groups/join/${encodeURIComponent(code)}`, { method: 'POST' })
   },
 
   // Expenses

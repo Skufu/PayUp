@@ -7,6 +7,7 @@ import { NotificationView } from './components/NotificationView'
 import { WalletView } from './components/WalletView'
 import { AddExpenseModal } from './components/modals/AddExpenseModal'
 import { CreateGroupModal } from './components/modals/CreateGroupModal'
+import { JoinGroupModal } from './components/modals/JoinGroupModal'
 import { MembersModal } from './components/modals/MembersModal'
 import { MyQrModal } from './components/modals/MyQrModal'
 import { PaymentModal } from './components/modals/PaymentModal'
@@ -42,6 +43,7 @@ export function PayUpApp() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false)
+  const [isJoinGroupOpen, setIsJoinGroupOpen] = useState(false)
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false)
   const [isMyQrModalOpen, setIsMyQrModalOpen] = useState(false)
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
@@ -170,6 +172,14 @@ export function PayUpApp() {
     return result
   }
 
+  const handleJoinGroup = async (code: string) => {
+    const result = await api.joinByCode(code)
+    await qc.invalidateQueries({ queryKey: ['groups'] })
+    // Switch to the newly joined group
+    setCurrentGroupId(result.groupId)
+    setIsJoinGroupOpen(false)
+  }
+
   const pendingCount = payments.filter((p) => p.receiverId === currentUser.id && p.status === 'pending').length
 
   return (
@@ -198,6 +208,7 @@ export function PayUpApp() {
             currentGroupId={currentGroup?.id}
             onSelectGroup={(g) => setCurrentGroupId(g.id)}
             onCreateGroup={() => setIsCreateGroupOpen(true)}
+            onJoinGroup={() => setIsJoinGroupOpen(true)}
             onOpenProfile={() => setIsProfileOpen(true)}
             currentUser={currentUser}
           />
@@ -233,12 +244,17 @@ export function PayUpApp() {
         currentGroupId={currentGroup?.id}
         onSelectGroup={(g) => setCurrentGroupId(g.id)}
         onCreateGroup={() => setIsCreateGroupOpen(true)}
+        onJoinGroup={() => setIsJoinGroupOpen(true)}
         onOpenProfile={() => setIsProfileOpen(true)}
         currentUser={currentUser}
       />
 
       {isCreateGroupOpen && (
         <CreateGroupModal isOpen onClose={() => setIsCreateGroupOpen(false)} onConfirm={handleCreateGroup} />
+      )}
+
+      {isJoinGroupOpen && (
+        <JoinGroupModal isOpen onClose={() => setIsJoinGroupOpen(false)} onJoin={handleJoinGroup} />
       )}
 
       {isProfileOpen && (

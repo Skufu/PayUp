@@ -1,4 +1,4 @@
-import { Check, MapPin, Plus, User as UserIcon } from 'lucide-react'
+import { Check, LogIn, MapPin, Plus, User as UserIcon } from 'lucide-react'
 
 import type { Group, User } from '../../types'
 
@@ -9,6 +9,7 @@ type Props = {
   currentGroupId?: string
   onSelectGroup: (g: Group) => void
   onCreateGroup: () => void
+  onJoinGroup: () => void
   onOpenProfile: () => void
   currentUser: User
 }
@@ -18,6 +19,7 @@ type SideMenuContentProps = {
   currentGroupId?: string
   onSelectGroup: (g: Group) => void
   onCreateGroup: () => void
+  onJoinGroup: () => void
   onOpenProfile: () => void
   currentUser: User
   className?: string
@@ -28,6 +30,7 @@ export function SideMenuContent({
   currentGroupId,
   onSelectGroup,
   onCreateGroup,
+  onJoinGroup,
   onOpenProfile,
   currentUser,
   className = '',
@@ -92,6 +95,15 @@ export function SideMenuContent({
            New Group
         </button>
         <button
+          onClick={onJoinGroup}
+          className="w-full text-left p-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors flex items-center gap-3 text-xs font-bold font-mono uppercase tracking-wide group"
+        >
+           <div className="w-8 h-8 rounded-full bg-[#1c1c21] flex items-center justify-center text-gray-500 group-hover:text-white transition-colors border border-white/5">
+             <LogIn size={14} /> 
+           </div>
+           Join Group
+        </button>
+        <button
           onClick={onOpenProfile}
           className="w-full text-left p-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors flex items-center gap-3 text-xs font-bold font-mono uppercase tracking-wide group"
         >
@@ -124,6 +136,10 @@ export function SideMenu({
           }}
           onCreateGroup={() => {
             contentProps.onCreateGroup()
+            onClose()
+          }}
+          onJoinGroup={() => {
+            contentProps.onJoinGroup()
             onClose()
           }}
           onOpenProfile={() => {

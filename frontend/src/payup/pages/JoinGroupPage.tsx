@@ -28,24 +28,29 @@ export function JoinGroupPage() {
     // Attempt to join the group
     const joinGroup = async () => {
       try {
-        await api.joinByCode(code)
+        const result = await api.joinByCode(code)
+        console.log('Successfully joined group:', result.groupId)
         setStatus('success')
         // Redirect to app after a brief success message
         setTimeout(() => {
           navigate('/app')
         }, 1500)
       } catch (err: any) {
+        console.error('Failed to join group:', err)
         setStatus('error')
         
-        // Parse error message
-        if (err?.message?.includes('404') || err?.message?.includes('invalid')) {
+        // Parse error message based on status code
+        const status = err?.status || 0
+        if (status === 404 || err?.message?.includes('404') || err?.message?.includes('invalid')) {
           setErrorMessage('Invalid or expired invite code')
-        } else if (err?.message?.includes('403')) {
+        } else if (status === 403 || err?.message?.includes('403')) {
           setErrorMessage('You do not have permission to join this group')
-        } else if (err?.message?.includes('410')) {
+        } else if (status === 410 || err?.message?.includes('410')) {
           setErrorMessage('This invite has expired')
+        } else if (status === 401 || err?.message?.includes('401')) {
+          setErrorMessage('Please log in first')
         } else {
-          setErrorMessage('Failed to join group. Please try again.')
+          setErrorMessage(err?.message || 'Failed to join group. Please try again.')
         }
       }
     }
