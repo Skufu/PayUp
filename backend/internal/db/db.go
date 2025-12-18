@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"errors"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,7 +21,15 @@ func NewPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 	}
 	cfg.MaxConnLifetime = 30 * time.Minute
 	cfg.MaxConnIdleTime = 5 * time.Minute
-	cfg.MaxConns = 10
+
+	// Default to 25 connections, configurable via DB_MAX_CONNS
+	maxConns := 25
+	if maxConnsStr := os.Getenv("DB_MAX_CONNS"); maxConnsStr != "" {
+		if n, err := strconv.Atoi(maxConnsStr); err == nil && n > 0 {
+			maxConns = n
+		}
+	}
+	cfg.MaxConns = int32(maxConns)
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

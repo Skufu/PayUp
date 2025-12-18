@@ -58,15 +58,24 @@ func New(deps Deps) *gin.Engine {
 	v1 := r.Group("/v1")
 	{
 		ah := &handlers.AuthHandler{Q: deps.Q, Issuer: deps.Issuer, UploadService: uploadSvc, GoogleClientID: deps.GoogleClientID}
-		// Auth routes with stricter rate limiting
+
+		// Auth routes with stricter rate limiting (5/15min for credential-based auth)
 		authGroup := v1.Group("/auth")
 		authGroup.Use(middleware.AuthRateLimit())
 		authGroup.POST("/register", ah.Register)
 		authGroup.POST("/login", ah.Login)
-		authGroup.POST("/refresh", ah.Refresh)
 		authGroup.POST("/google", ah.GoogleAuth)
-		authGroup.GET("/me", auth.Middleware(deps.Issuer), ah.Me)
-		authGroup.PATCH("/profile", auth.Middleware(deps.Issuer), ah.UpdateProfile)
+
+		// Token refresh with more lenient rate limiting (30/15min)
+		// Separate from login/register because refresh uses existing tokens
+		refreshGroup := v1.Group("/auth")
+		refreshGroup.Use(middleware.RefreshRateLimit())
+		refreshGroup.POST("/refresh", ah.Refresh)
+
+		// Authenticated profile routes (no additional rate limiting, uses general)
+		authProfile := v1.Group("/auth")
+		authProfile.GET("/me", auth.Middleware(deps.Issuer), ah.Me)
+		authProfile.PATCH("/profile", auth.Middleware(deps.Issuer), ah.UpdateProfile)
 
 		v1.GET("/users/:id/profile", auth.Middleware(deps.Issuer), ah.GetUserPublicProfile)
 

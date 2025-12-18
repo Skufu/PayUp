@@ -19,3 +19,5 @@ CREATE INDEX idx_oauth_accounts_user_id ON oauth_accounts(user_id);
 DROP INDEX IF EXISTS idx_oauth_accounts_user_id;
 DROP TABLE IF EXISTS oauth_accounts;
 ALTER TABLE users ALTER COLUMN password_hash SET NOT NULL;
+
+

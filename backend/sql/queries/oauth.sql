@@ -16,3 +16,5 @@ WHERE user_id = $1;
 -- name: DeleteOAuthAccount :exec
 DELETE FROM oauth_accounts
 WHERE id = $1 AND user_id = $2;
+
+

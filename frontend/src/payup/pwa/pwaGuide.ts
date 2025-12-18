@@ -29,3 +29,5 @@ export function markPWAGuideAsShown() {
   sessionStorage.setItem('pwaGuideShown', 'true')
 }
 
+
+

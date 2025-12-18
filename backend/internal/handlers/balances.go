@@ -2,13 +2,11 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/Skufu/PayUp/internal/auth"
-	"github.com/Skufu/PayUp/internal/balance"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
 	"github.com/gin-gonic/gin"
@@ -51,41 +49,33 @@ func (h *BalancesHandler) GetByGroup(c *gin.Context) {
 		return
 	}
 
-	// Start with all members at 0.
-	members, err := h.Q.ListGroupMemberIDs(ctx, groupID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to compute balances"})
-		return
-	}
-	memberIDs := make([]string, 0, len(members))
-	for _, mid := range members {
-		memberIDs = append(memberIDs, sqlcutil.UUIDToString(mid))
-	}
-
-	expRows, err := h.Q.ListExpensesByGroup(ctx, groupID)
+	// Use optimized SQL query that computes balances in the database
+	rows, err := h.Q.ComputeBalancesByGroup(ctx, groupID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to compute balances"})
 		return
 	}
 
-	expenses := make([]balance.Expense, 0, len(expRows))
-	for _, row := range expRows {
-		var splits map[string]float64
-		if err := json.Unmarshal([]byte(row.Splits), &splits); err != nil {
-			splits = map[string]float64{}
+	// Convert to map format expected by frontend
+	balances := make(map[string]float64, len(rows))
+	for _, row := range rows {
+		userID := sqlcutil.UUIDToString(row.UserID)
+		balance, err := strconv.ParseFloat(row.Balance, 64)
+		if err != nil {
+			balance = 0
 		}
-		amt, _ := strconv.ParseFloat(row.Amount, 64)
-		expenses = append(expenses, balance.Expense{
-			PayerID: sqlcutil.UUIDToString(row.PayerID),
-			Amount:  amt,
-			Splits:  splits,
-		})
+		balances[userID] = balance
 	}
 
-	balances, err := balance.Compute(memberIDs, expenses)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to compute balances"})
-		return
+	// Ensure all members have an entry (even if balance is 0)
+	members, err := h.Q.ListGroupMemberIDs(ctx, groupID)
+	if err == nil {
+		for _, mid := range members {
+			userID := sqlcutil.UUIDToString(mid)
+			if _, exists := balances[userID]; !exists {
+				balances[userID] = 0
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, balances)

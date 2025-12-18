@@ -29,7 +29,7 @@ export const WalletView = memo(function WalletView({
       {/* Left Column (Desktop) - Stats & Settlements */}
       <div className="md:col-span-4 xl:col-span-3 space-y-6">
         <section className="mt-4 md:mt-0">
-          <BalanceCard balances={balances} currentUser={currentUser} />
+          <BalanceCard balances={balances} currentUser={currentUser} expenses={expenses} />
         </section>
 
         {/* Desktop Settlements List - Only visible if there are settlements */}
@@ -93,10 +93,18 @@ export const WalletView = memo(function WalletView({
   )
 })
 
-const BalanceCard = memo(function BalanceCard({ balances, currentUser }: { balances: Record<string, number>; currentUser: User }) {
+const BalanceCard = memo(function BalanceCard({ balances, currentUser, expenses }: { balances: Record<string, number>; currentUser: User; expenses: Expense[] }) {
   const myBalance = balances[currentUser.id] || 0
   const isOwed = myBalance > 0
   const isDebt = myBalance < 0
+
+  // Calculate Group Total (sum of all expense amounts)
+  const groupTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+
+  // Calculate Your Share (sum of all splits for current user)
+  const yourShare = expenses.reduce((sum, expense) => {
+    return sum + (expense.splits[currentUser.id] || 0)
+  }, 0)
 
   return (
     <div className="relative overflow-hidden rounded-3xl bg-[#1c1c21] border border-white/5 p-6 md:p-8 group transition-transform hover:scale-[1.01] duration-500 shadow-2xl">
@@ -156,11 +164,15 @@ const BalanceCard = memo(function BalanceCard({ balances, currentUser }: { balan
         <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 mt-4">
              <div>
                  <p className="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Group Total</p>
-                 <p className="text-sm font-bold text-gray-300">--</p>
+                 <p className="text-sm font-bold text-gray-300">
+                   {groupTotal.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
+                 </p>
              </div>
              <div>
                  <p className="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">Your Share</p>
-                 <p className="text-sm font-bold text-gray-300">--</p>
+                 <p className="text-sm font-bold text-gray-300">
+                   {yourShare.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
+                 </p>
              </div>
         </div>
       </div>
