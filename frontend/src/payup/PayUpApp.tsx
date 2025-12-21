@@ -7,6 +7,7 @@ import { NotificationView } from './components/NotificationView'
 import { WalletView } from './components/WalletView'
 import { OfflineIndicator } from './components/OfflineIndicator'
 import { SideMenu, SideMenuContent } from './components/modals/SideMenu'
+import { ConfirmDialog } from './components/modals/ConfirmDialog'
 import { api } from './api/endpoints'
 import { useAuth } from './auth/useAuth'
 import { pushManager } from './push/pushManager'
@@ -78,6 +79,15 @@ export function PayUpApp() {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [isPushPromptOpen, setIsPushPromptOpen] = useState(false)
 
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    variant: 'danger' | 'warning' | 'default'
+    onConfirm: () => void
+  }>({ isOpen: false, title: '', message: '', variant: 'default', onConfirm: () => {} })
+
   const groupsQuery = useQuery({
     queryKey: ['groups'],
     queryFn: () => api.listGroups(),
@@ -126,6 +136,7 @@ export function PayUpApp() {
         receiverId: p.receiverId,
         amount: p.amount,
         status: p.status,
+        proofUrl: p.proofUrl,
         createdAt: Date.parse(p.createdAt),
       })),
   })
@@ -187,13 +198,25 @@ export function PayUpApp() {
     await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
   }, [effectiveGroupId, qc])
 
-  const handleDeleteExpense = useCallback(async (expenseId: string) => {
+  const handleDeleteExpense = useCallback((expenseId: string) => {
     if (!effectiveGroupId) return
-    if (!confirm('Delete this? Balances will be recalculated.')) return
-    await api.deleteExpense(expenseId)
-    await qc.invalidateQueries({ queryKey: ['expenses', effectiveGroupId] })
-    await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Expense',
+      message: 'Are you sure you want to delete this expense? Balances will be recalculated.',
+      variant: 'danger',
+      onConfirm: async () => {
+        await api.deleteExpense(expenseId)
+        await qc.invalidateQueries({ queryKey: ['expenses', effectiveGroupId] })
+        await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+      },
+    })
   }, [effectiveGroupId, qc])
+
+  const handleCloseConfirmDialog = useCallback(() => {
+    setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+  }, [])
 
   const handlePaymentSubmit = useCallback(async (payeeId: string, amount: number, proofUrl?: string) => {
     if (!effectiveGroupId) return
@@ -210,12 +233,20 @@ export function PayUpApp() {
     await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
   }, [effectiveGroupId, qc])
 
-  const handleNudge = useCallback(async (userId: string, amount: number) => {
+  const handleNudge = useCallback((userId: string, amount: number) => {
     if (!effectiveGroupId) return
     const user = activeUsers.find((u) => u.id === userId)
     const userName = user?.name || 'your friend'
-    if (!confirm(`Send a payment reminder to ${userName}?`)) return
-    await api.sendNudge(userId, effectiveGroupId, amount)
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Send Reminder',
+      message: `Send a payment reminder to ${userName} for ${amount.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}?`,
+      variant: 'warning',
+      onConfirm: async () => {
+        await api.sendNudge(userId, effectiveGroupId, amount)
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+      },
+    })
   }, [effectiveGroupId, activeUsers])
 
   const openAddModal = useCallback((mode: AddModalMode) => {
@@ -414,6 +445,17 @@ export function PayUpApp() {
         <InstallPrompt />
         <PushNotificationPrompt isOpen={isPushPromptOpen} onClose={handleClosePushPrompt} />
       </Suspense>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={handleCloseConfirmDialog}
+        confirmLabel={confirmDialog.variant === 'danger' ? 'Delete' : confirmDialog.variant === 'warning' ? 'Send' : 'Confirm'}
+      />
     </>
   )
 }

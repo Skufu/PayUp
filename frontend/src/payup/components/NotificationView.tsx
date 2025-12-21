@@ -1,8 +1,7 @@
-import { ArrowRight, Bell, Camera, Check, CheckCheck, Clock, Eye, Receipt, Smartphone, Upload, Wallet, X } from 'lucide-react'
+import { ArrowRight, Bell, Camera, Check, CheckCheck, Clock, Eye, ImageOff, Receipt, Smartphone, Upload, Wallet, X, ZoomIn } from 'lucide-react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { MOCK_PROOF_URL } from '../mock/data'
 import { api } from '../api/endpoints'
 import type { Payment, User } from '../types'
 
@@ -225,6 +224,7 @@ export const NotificationView = memo(function NotificationView({ payments, curre
         <PaymentProofModal
           payment={selectedPayment}
           currentUser={currentUser}
+          activeUsers={activeUsers}
           onClose={() => setSelectedPayment(null)}
           onReviewPayment={onReviewPayment}
         />
@@ -237,14 +237,26 @@ export const NotificationView = memo(function NotificationView({ payments, curre
 const PaymentProofModal = memo(function PaymentProofModal({
   payment,
   currentUser,
+  activeUsers,
   onClose,
   onReviewPayment,
 }: {
   payment: Payment
   currentUser: User
+  activeUsers: User[]
   onClose: () => void
   onReviewPayment: (paymentId: string, status: Payment['status']) => void
 }) {
+  const [isZoomed, setIsZoomed] = useState(false)
+
+  const sender = activeUsers.find((u) => u.id === payment.senderId) ?? {
+    id: 'unknown',
+    name: 'Unknown',
+    avatar: '?',
+    color: 'bg-gray-500',
+    qr: '',
+  }
+
   const handleReject = useCallback(() => {
     onReviewPayment(payment.id, 'rejected')
     onClose()
@@ -255,6 +267,8 @@ const PaymentProofModal = memo(function PaymentProofModal({
     onClose()
   }, [onReviewPayment, payment.id, onClose])
 
+  const proofUrl = payment.proofUrl
+
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} />
@@ -262,20 +276,51 @@ const PaymentProofModal = memo(function PaymentProofModal({
         <div className="p-4 border-b border-white/10 bg-[#1c1c21] flex justify-between items-center">
           <h3 className="font-bold text-white">Payment Proof</h3>
           <button onClick={onClose}>
-            <X size={20} className="text-gray-400" />
+            <X size={20} className="text-gray-400 hover:text-white transition-colors" />
           </button>
         </div>
         <div className="p-4 flex flex-col items-center">
-          <div className="w-full bg-[#0a0a0c] rounded-xl overflow-hidden mb-4 border border-white/5 relative group">
-            <img
-              src={MOCK_PROOF_URL}
-              alt="Proof"
-              className="w-full h-auto opacity-80 group-hover:opacity-100 transition-opacity"
-            />
-            <div className="absolute bottom-2 right-2 bg-black/50 backdrop-blur px-2 py-1 rounded text-[10px] text-white font-mono">
-              SAMPLE PROOF
+          {/* Sender info */}
+          <div className="w-full flex items-center gap-3 mb-4 p-3 bg-white/5 rounded-xl">
+            <div className={`w-10 h-10 rounded-full ${sender.color} flex items-center justify-center text-black font-bold text-sm`}>
+              {sender.avatar}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-white truncate">{sender.name}</p>
+              <p className="text-[10px] text-gray-500 font-mono">
+                {new Date(payment.createdAt).toLocaleString('en-PH', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </p>
             </div>
           </div>
+
+          {/* Proof image */}
+          {proofUrl ? (
+            <div
+              className="w-full bg-[#0a0a0c] rounded-xl overflow-hidden mb-4 border border-white/5 relative group cursor-pointer"
+              onClick={() => setIsZoomed(true)}
+            >
+              <img
+                src={proofUrl}
+                alt="Payment proof"
+                className="w-full h-auto max-h-[300px] object-contain"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <ZoomIn size={32} className="text-white" />
+              </div>
+            </div>
+          ) : (
+            <div className="w-full h-40 bg-[#0a0a0c] rounded-xl mb-4 border border-white/5 flex flex-col items-center justify-center">
+              <ImageOff size={32} className="text-gray-600 mb-2" />
+              <p className="text-sm text-gray-500">No proof uploaded</p>
+            </div>
+          )}
+
           <div className="text-center mb-6">
             <p className="text-gray-500 text-xs uppercase tracking-wider">Amount Paid</p>
             <p className="text-3xl font-mono font-bold text-[#dfff4f]">
@@ -301,7 +346,7 @@ const PaymentProofModal = memo(function PaymentProofModal({
             <div className="w-full text-center p-3 bg-white/5 rounded-xl border border-white/5">
               <p className="text-xs text-gray-400 font-mono uppercase">
                 Status:{' '}
-                <span className={payment.status === 'approved' ? 'text-[#dfff4f]' : 'text-white'}>
+                <span className={payment.status === 'approved' ? 'text-[#dfff4f]' : payment.status === 'rejected' ? 'text-red-500' : 'text-white'}>
                   {payment.status}
                 </span>
               </p>
@@ -309,6 +354,26 @@ const PaymentProofModal = memo(function PaymentProofModal({
           )}
         </div>
       </div>
+
+      {/* Full-screen zoom modal */}
+      {isZoomed && proofUrl && (
+        <div
+          className="fixed inset-0 z-[80] bg-black/95 flex items-center justify-center p-4"
+          onClick={() => setIsZoomed(false)}
+        >
+          <button
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+            onClick={() => setIsZoomed(false)}
+          >
+            <X size={24} className="text-white" />
+          </button>
+          <img
+            src={proofUrl}
+            alt="Payment proof (full size)"
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
+      )}
     </div>
   )
 })

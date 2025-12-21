@@ -33,6 +33,20 @@ export const api = {
     return apiRequest<AuthUser>(`/v1/auth/me`)
   },
 
+  // Password Reset
+  requestPasswordReset(email: string) {
+    return apiRequest<{ message: string; resetToken?: string }>(`/v1/auth/reset-request`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    })
+  },
+  resetPassword(token: string, newPassword: string) {
+    return apiRequest<{ message: string }>(`/v1/auth/reset`, {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    })
+  },
+
   updateProfile(name?: string, paymentQRFile?: File, avatarFile?: File) {
     const form = new FormData()
     if (name && name.trim()) form.append('name', name.trim())

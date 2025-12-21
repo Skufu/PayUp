@@ -30,6 +30,7 @@ export type Payment = {
   receiverId: string
   amount: number
   status: 'pending' | 'approved' | 'rejected'
+  proofUrl?: string | null
   createdAt: number
 }
 

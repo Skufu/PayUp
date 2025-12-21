@@ -18,6 +18,8 @@ type Issuer struct {
 	RefreshTokenTTL time.Duration
 }
 
+const ResetTokenTTL = 15 * time.Minute
+
 func (i Issuer) Issue(userID string) (TokenPair, error) {
 	if len(i.Secret) == 0 {
 		return TokenPair{}, errors.New("JWT secret is required")
@@ -83,4 +85,21 @@ func (i Issuer) Parse(tokenStr string, wantType string) (userID string, err erro
 	}
 
 	return sub, nil
+}
+
+// IssueResetToken creates a password reset token with 15-minute expiry.
+func (i Issuer) IssueResetToken(userID string) (string, error) {
+	if len(i.Secret) == 0 {
+		return "", errors.New("JWT secret is required")
+	}
+
+	now := time.Now()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": userID,
+		"typ": "reset",
+		"iat": now.Unix(),
+		"exp": now.Add(ResetTokenTTL).Unix(),
+	})
+
+	return token.SignedString(i.Secret)
 }

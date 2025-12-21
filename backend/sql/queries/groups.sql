@@ -39,3 +39,8 @@ JOIN users u ON u.id = gm.user_id
 WHERE gm.group_id = $1
 ORDER BY gm.joined_at ASC;
 
+-- name: CountGroupMembers :one
+SELECT COUNT(*) AS count
+FROM group_members
+WHERE group_id = $1;
+

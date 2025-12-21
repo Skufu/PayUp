@@ -11,6 +11,7 @@ import (
 	"github.com/Skufu/PayUp/internal/auth"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
+	"github.com/Skufu/PayUp/internal/logger"
 	"github.com/Skufu/PayUp/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -149,6 +150,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	u, err := h.Q.GetUserByEmail(ctx, email)
 	if err != nil || u.PasswordHash == nil || !auth.CheckPassword(*u.PasswordHash, req.Password) {
+		// Log failed auth attempt
+		reason := "invalid_credentials"
+		if err != nil {
+			reason = "user_not_found"
+		} else if u.PasswordHash == nil {
+			reason = "no_password_set"
+		} else {
+			reason = "wrong_password"
+		}
+		logger.AuthFailure(reason, c.ClientIP(), email)
+
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
@@ -258,7 +270,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 			return
 		}
 
-		url, upErr := h.UploadService.UploadPaymentQR(ctx, file, header.Filename, uid.String())
+		url, upErr := h.UploadService.UploadPaymentQR(ctx, file, header, uid.String())
 		if upErr != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("upload failed: %v", upErr)})
 			return
@@ -275,7 +287,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 			return
 		}
 
-		url, upErr := h.UploadService.UploadAvatar(ctx, file, header.Filename, uid.String())
+		url, upErr := h.UploadService.UploadAvatar(ctx, file, header, uid.String())
 		if upErr != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("avatar upload failed: %v", upErr)})
 			return
@@ -328,6 +340,15 @@ func (h *AuthHandler) GetUserPublicProfile(c *gin.Context) {
 
 type googleAuthRequest struct {
 	IDToken string `json:"idToken"`
+}
+
+type resetRequestRequest struct {
+	Email string `json:"email"`
+}
+
+type resetPasswordRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"newPassword"`
 }
 
 // GoogleAuth handles Google OAuth sign-in using ID token from frontend.
@@ -465,4 +486,106 @@ func (h *AuthHandler) GoogleAuth(c *gin.Context) {
 		},
 		Token: tokens,
 	})
+}
+
+// RequestPasswordReset handles password reset requests.
+// In a production system, this would send an email with the reset link.
+// For now, it returns the token in the response for testing purposes.
+func (h *AuthHandler) RequestPasswordReset(c *gin.Context) {
+	var req resetRequestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+		return
+	}
+
+	email := strings.TrimSpace(strings.ToLower(req.Email))
+	if !ValidateEmail(email) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid email format"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	// Look up user by email
+	u, err := h.Q.GetUserByEmail(ctx, email)
+	if err != nil {
+		// Don't reveal whether the email exists - return success either way
+		c.JSON(http.StatusOK, gin.H{"message": "if the email exists, a reset link has been sent"})
+		return
+	}
+
+	// Check if user has a password (OAuth-only users cannot reset password)
+	if u.PasswordHash == nil {
+		c.JSON(http.StatusOK, gin.H{"message": "if the email exists, a reset link has been sent"})
+		return
+	}
+
+	// Generate reset token
+	userID := sqlcutil.UUIDToString(u.ID)
+	resetToken, err := h.Issuer.IssueResetToken(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate reset token"})
+		return
+	}
+
+	// In production, send email here instead of returning the token
+	// For now, return the token for testing
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "if the email exists, a reset link has been sent",
+		"resetToken": resetToken, // Remove this in production - send via email instead
+	})
+}
+
+// ResetPassword handles the actual password reset using the token.
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req resetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+		return
+	}
+
+	if req.Token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "token is required"})
+		return
+	}
+
+	if err := ValidatePassword(req.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Parse and validate the reset token
+	userID, err := h.Issuer.Parse(req.Token, "reset")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired reset token"})
+		return
+	}
+
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	// Hash the new password
+	pwHash, err := auth.HashPassword(req.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
+		return
+	}
+
+	// Update the password
+	if err := h.Q.UpdateUserPassword(ctx, sqlcdb.UpdateUserPasswordParams{
+		ID:           sqlcutil.UUID(uid),
+		PasswordHash: &pwHash,
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update password"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "password reset successfully"})
 }

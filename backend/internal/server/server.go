@@ -7,6 +7,7 @@ import (
 	"github.com/Skufu/PayUp/internal/auth"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/handlers"
+	"github.com/Skufu/PayUp/internal/logger"
 	"github.com/Skufu/PayUp/internal/middleware"
 	"github.com/Skufu/PayUp/internal/services"
 	"github.com/gin-gonic/gin"
@@ -30,15 +31,17 @@ func New(deps Deps) *gin.Engine {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	// Initialize structured logger
+	logger.Init()
+
 	r := gin.New()
 
 	// SECURITY MIDDLEWARE (ORDER MATTERS!)
-	r.Use(gin.Recovery())                // 1. Panic recovery first
-	r.Use(middleware.CORS())             // 2. CORS before other handlers
-	r.Use(middleware.SecurityHeaders())  // 3. Security headers on all responses
-	r.Use(middleware.RateLimit())        // 4. General rate limiting
-	r.Use(middleware.StructuredLogger()) // 5. Request logging
-	r.Use(gin.Logger())                  // 6. Gin's built-in logger for dev
+	r.Use(middleware.RecoveryWithLogger()) // 1. Panic recovery with logging
+	r.Use(middleware.CORS())               // 2. CORS before other handlers
+	r.Use(middleware.SecurityHeaders())    // 3. Security headers on all responses
+	r.Use(middleware.RateLimit())          // 4. General rate limiting
+	r.Use(middleware.StructuredLogger())   // 5. Structured request logging
 
 	// HTTPS enforcement in production
 	if os.Getenv("GIN_MODE") == "release" {
@@ -65,6 +68,8 @@ func New(deps Deps) *gin.Engine {
 		authGroup.POST("/register", ah.Register)
 		authGroup.POST("/login", ah.Login)
 		authGroup.POST("/google", ah.GoogleAuth)
+		authGroup.POST("/reset-request", ah.RequestPasswordReset)
+		authGroup.POST("/reset", ah.ResetPassword)
 
 		// Token refresh with more lenient rate limiting (30/15min)
 		// Separate from login/register because refresh uses existing tokens

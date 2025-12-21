@@ -293,7 +293,7 @@ func (h *PaymentsHandler) UploadProof(c *gin.Context) {
 	defer cancel()
 
 	proofID := uuid.NewString()
-	url, err := h.UploadService.UploadPaymentProof(ctx, file, header.Filename, proofID)
+	url, err := h.UploadService.UploadPaymentProof(ctx, file, header, proofID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "upload failed"})
 		return

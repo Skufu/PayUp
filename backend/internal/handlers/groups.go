@@ -16,6 +16,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// MaxGroupMembers is the maximum number of members allowed per group.
+const MaxGroupMembers = 20
+
 type GroupsHandler struct {
 	Pool *pgxpool.Pool
 	Q    *sqlcdb.Queries
@@ -276,6 +279,27 @@ func (h *GroupsHandler) JoinByCode(c *gin.Context) {
 	}
 	if inv.ExpiresAt.Valid && inv.ExpiresAt.Time.Before(time.Now()) {
 		c.JSON(http.StatusGone, gin.H{"error": "invite expired"})
+		return
+	}
+
+	// Check if user is already a member
+	isMember, err := h.Q.IsGroupMember(ctx, sqlcdb.IsGroupMemberParams{
+		GroupID: inv.GroupID,
+		UserID:  sqlcutil.UUID(uid),
+	})
+	if err == nil && isMember {
+		c.JSON(http.StatusOK, gin.H{"groupId": sqlcutil.UUIDToString(inv.GroupID)})
+		return
+	}
+
+	// Check member limit
+	count, err := h.Q.CountGroupMembers(ctx, inv.GroupID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to join group"})
+		return
+	}
+	if count >= MaxGroupMembers {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "group has reached maximum member limit (20)"})
 		return
 	}
 

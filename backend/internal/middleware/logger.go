@@ -1,14 +1,14 @@
 package middleware
 
 import (
-	"log"
+	"runtime/debug"
 	"time"
 
+	"github.com/Skufu/PayUp/internal/logger"
 	"github.com/gin-gonic/gin"
 )
 
-// StructuredLogger logs requests with timing and error details.
-// Uses standard library logger for simplicity (can be upgraded to zap later).
+// StructuredLogger logs requests with timing and error details using structured logging.
 func StructuredLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -22,23 +22,39 @@ func StructuredLogger() gin.HandlerFunc {
 		clientIP := c.ClientIP()
 		method := c.Request.Method
 
-		// Log format: [timestamp] status | latency | ip | method path?query | errors
-		logLine := ""
+		fullPath := path
 		if query != "" {
-			logLine = path + "?" + query
-		} else {
-			logLine = path
+			fullPath = path + "?" + query
 		}
+
+		fields := logger.Fields{}
 
 		// Log errors if any
 		if len(c.Errors) > 0 {
-			log.Printf("[API] %d | %13v | %15s | %s %s | errors: %s",
-				status, latency, clientIP, method, logLine, c.Errors.String())
-		} else if status >= 400 {
-			// Log client/server errors
-			log.Printf("[API] %d | %13v | %15s | %s %s",
-				status, latency, clientIP, method, logLine)
+			fields["errors"] = c.Errors.String()
 		}
-		// Don't log successful requests to reduce noise (gin.Logger() already does this)
+
+		// Add user ID if available
+		if userID, exists := c.Get("userID"); exists {
+			fields["user_id"] = userID
+		}
+
+		logger.Request(method, fullPath, status, latency, clientIP, fields)
+	}
+}
+
+// RecoveryWithLogger returns a gin middleware that recovers from panics
+// and logs them using structured logging.
+func RecoveryWithLogger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if err := recover(); err != nil {
+				stack := debug.Stack()
+				logger.Panic(err, stack)
+
+				c.AbortWithStatusJSON(500, gin.H{"error": "internal server error"})
+			}
+		}()
+		c.Next()
 	}
 }
