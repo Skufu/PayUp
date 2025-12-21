@@ -5,7 +5,8 @@
       "Bash(go build:*)",
       "Bash(npm run build:*)",
       "Bash(go test:*)",
-      "Bash(sqlc generate:*)"
+      "Bash(sqlc generate:*)",
+      "Bash(gofmt:*)"
     ]
   }
 }

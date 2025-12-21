@@ -154,7 +154,3 @@ func TestPaymentsUploadProof_NoUploadService_503(t *testing.T) {
 		t.Fatalf("expected %d got %d: %s", http.StatusServiceUnavailable, rr.Code, rr.Body.String())
 	}
 }
-
-
-
-

@@ -26,7 +26,16 @@ jobs:
 
       - name: gofmt check
         run: |
-          test -z "$(gofmt -l .)"
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "The following files are not formatted:"
+            gofmt -l .
+            echo "Run 'gofmt -w .' to fix"
+            exit 1
+          fi
+
+      - name: go vet
+        run: |
+          go vet ./...
 
       - name: sqlc generate check
         run: |
@@ -35,7 +44,15 @@ jobs:
 
       - name: go test
         run: |
-          go test ./...
+          go test -v -race -coverprofile=coverage.out ./...
+
+      - name: go build
+        run: |
+          go build -v ./...
+
+      - name: Docker build
+        run: |
+          docker build -t payup-api:test .
 
   frontend:
     runs-on: ubuntu-latest

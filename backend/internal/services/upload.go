@@ -22,9 +22,9 @@ import (
 
 // Upload constraints
 const (
-	MaxFileSize   = 5 * 1024 * 1024 // 5MB
-	MinDimension  = 100             // Minimum width/height in pixels
-	MaxDimension  = 4000            // Maximum width/height in pixels
+	MaxFileSize  = 5 * 1024 * 1024 // 5MB
+	MinDimension = 100             // Minimum width/height in pixels
+	MaxDimension = 4000            // Maximum width/height in pixels
 )
 
 // UploadService uploads images to Cloudinary.

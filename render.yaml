@@ -4,6 +4,7 @@ services:
     runtime: docker
     rootDir: backend
     dockerfilePath: ./Dockerfile
+    region: singapore
     autoDeploy: true
     healthCheckPath: /health
     plan: free
@@ -12,11 +13,18 @@ services:
         value: 8080
       - key: GIN_MODE
         value: release
+      - key: LOG_LEVEL
+        value: INFO
       # Set these in Render dashboard as "Secret" values:
       # DATABASE_URL - Your Neon/Supabase PostgreSQL connection string
       # JWT_SECRET - Generate with: openssl rand -base64 32
-      # CORS_ORIGINS - e.g., https://your-app.vercel.app
+      # CORS_ORIGINS - e.g., https://your-app.vercel.app,https://www.your-app.com
+      # ACCESS_TOKEN_TTL_MINUTES - Default: 15
+      # REFRESH_TOKEN_TTL_HOURS - Default: 720 (30 days)
       # GOOGLE_CLIENT_ID - For Google OAuth (optional)
-      # CLOUDINARY_URL - For image uploads (optional)
+      # CLOUDINARY_CLOUD_NAME - For image uploads (optional)
+      # CLOUDINARY_API_KEY - For image uploads (optional)
+      # CLOUDINARY_API_SECRET - For image uploads (optional)
       # VAPID_PUBLIC_KEY - For push notifications (optional)
       # VAPID_PRIVATE_KEY - For push notifications (optional)
+      # VAPID_SUBJECT - For push notifications (optional, e.g., mailto:admin@example.com)
