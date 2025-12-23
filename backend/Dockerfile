@@ -16,6 +16,11 @@ FROM gcr.io/distroless/static-debian12:nonroot
 
 WORKDIR /
 
+# Copy CA certificates and timezone data from build stage (needed for HTTPS and time operations)
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
+
+# Copy the binary
 COPY --from=build /out/payup-api /payup-api
 
 ENV PORT=8080
