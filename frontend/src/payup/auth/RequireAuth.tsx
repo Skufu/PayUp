@@ -3,8 +3,13 @@ import { Navigate, useLocation } from 'react-router-dom'
 
 import { useAuth } from './useAuth'
 
-export function RequireAuth({ children }: { children: ReactNode }) {
-  const { state } = useAuth()
+type Props = {
+  children: ReactNode
+  skipOnboarding?: boolean
+}
+
+export function RequireAuth({ children, skipOnboarding = false }: Props) {
+  const { state, needsOnboarding } = useAuth()
   const loc = useLocation()
 
   if (state.status === 'loading') {
@@ -17,6 +22,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (state.status !== 'authed') {
     return <Navigate to="/auth/login" replace state={{ from: loc }} />
+  }
+
+  // Redirect to onboarding if needed (unless we're already on onboarding page)
+  if (!skipOnboarding && needsOnboarding() && loc.pathname !== '/app/onboarding') {
+    return <Navigate to="/app/onboarding" replace />
   }
 
   return <>{children}</>

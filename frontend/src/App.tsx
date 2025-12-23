@@ -8,6 +8,7 @@ import { ForgotPasswordPage } from './payup/pages/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from './payup/pages/auth/ResetPasswordPage'
 import { LandingPage } from './payup/pages/LandingPage'
 import { JoinGroupPage } from './payup/pages/JoinGroupPage'
+import { OnboardingPage } from './payup/pages/OnboardingPage'
 
 export default function App() {
   return (
@@ -19,6 +20,14 @@ export default function App() {
         <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
         <Route path="/join/:code" element={<JoinGroupPage />} />
+        <Route
+          path="/app/onboarding"
+          element={
+            <RequireAuth skipOnboarding>
+              <OnboardingPage />
+            </RequireAuth>
+          }
+        />
         <Route
           path="/app"
           element={

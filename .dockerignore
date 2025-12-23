@@ -1,0 +1,62 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+LICENSE
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Dependencies (will be downloaded during build)
+backend/vendor/
+node_modules/
+
+# Build artifacts
+backend/bin/
+backend/dist/
+backend/tmp/
+frontend/dist/
+frontend/build/
+
+# Test files
+backend/**/*_test.go
+backend/testdata/
+frontend/**/*.test.ts
+frontend/**/*.test.tsx
+frontend/**/*.spec.ts
+frontend/**/*.spec.tsx
+coverage/
+
+# Deployment
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile*
+render.yaml
+render.env.example
+
+# Logs
+*.log
+logs/
+
+# Other
+frontend/
