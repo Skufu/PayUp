@@ -36,16 +36,10 @@ ARG BUILD_DATE
 # Build the binary with optimizations
 # - CGO_ENABLED=0: Static binary for distroless
 # - -trimpath: Remove file system paths from binary
-# - -ldflags: Strip debug info and set version
+# - -ldflags: Strip debug info (version vars optional - add to main.go if needed)
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 \
-    GOOS=linux \
-    GOARCH=amd64 \
-    go build \
-    -trimpath \
-    -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" \
-    -o /out/payup-api \
-    ./cmd/api
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath -ldflags="-s -w" -o /out/payup-api ./cmd/api
 
 # ============================================
 # Runtime Stage
