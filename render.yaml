@@ -3,7 +3,7 @@ services:
     name: payup-api
     runtime: docker
     rootDir: backend
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: backend/Dockerfile
     region: singapore
     autoDeploy: true
     healthCheckPath: /health
