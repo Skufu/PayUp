@@ -2,7 +2,7 @@ services:
   - type: web
     name: payup-api
     runtime: docker
-    dockerfilePath: backend/Dockerfile
+    dockerfilePath: Dockerfile
     dockerContext: backend
     region: singapore
     autoDeploy: true
