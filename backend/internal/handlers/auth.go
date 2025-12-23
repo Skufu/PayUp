@@ -370,10 +370,10 @@ func (h *AuthHandler) GoogleAuth(c *gin.Context) {
 	// Verify the ID token with Google
 	payload, err := idtoken.Validate(ctx, req.IDToken, h.GoogleClientID)
 	if err != nil {
-		logger.Error("google token validation failed",
-			"error", err.Error(),
-			"client_id_length", len(h.GoogleClientID),
-		)
+		logger.Error("google token validation failed", logger.Fields{
+			"error":            err.Error(),
+			"client_id_length": len(h.GoogleClientID),
+		})
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid google token"})
 		return
 	}
@@ -403,7 +403,7 @@ func (h *AuthHandler) GoogleAuth(c *gin.Context) {
 		userID = sqlcutil.UUIDToString(oauthAcc.UserID)
 		user, err = h.Q.GetUserByID(ctx, oauthAcc.UserID)
 		if err != nil {
-			logger.Error("google auth: failed to get user by id", "error", err.Error(), "user_id", userID)
+			logger.Error("google auth: failed to get user by id", logger.Fields{"error": err.Error(), "user_id": userID})
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get user"})
 			return
 		}
@@ -420,7 +420,7 @@ func (h *AuthHandler) GoogleAuth(c *gin.Context) {
 				Email:      &email,
 			})
 			if err != nil {
-				logger.Error("google auth: failed to link google account", "error", err.Error(), "email", email)
+				logger.Error("google auth: failed to link google account", logger.Fields{"error": err.Error(), "email": email})
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to link google account"})
 				return
 			}
@@ -441,7 +441,7 @@ func (h *AuthHandler) GoogleAuth(c *gin.Context) {
 				AvatarUrl: picturePtr,
 			})
 			if createErr != nil {
-				logger.Error("google auth: failed to create user", "error", createErr.Error(), "email", email)
+				logger.Error("google auth: failed to create user", logger.Fields{"error": createErr.Error(), "email": email})
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
 				return
 			}
@@ -456,7 +456,7 @@ func (h *AuthHandler) GoogleAuth(c *gin.Context) {
 				Email:      &email,
 			})
 			if err != nil {
-				logger.Error("google auth: failed to create oauth account", "error", err.Error(), "email", email)
+				logger.Error("google auth: failed to create oauth account", logger.Fields{"error": err.Error(), "email": email})
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create oauth account"})
 				return
 			}
@@ -476,7 +476,7 @@ func (h *AuthHandler) GoogleAuth(c *gin.Context) {
 	// Issue JWT tokens
 	tokens, err := h.Issuer.Issue(userID)
 	if err != nil {
-		logger.Error("google auth: failed to issue token", "error", err.Error(), "user_id", userID)
+		logger.Error("google auth: failed to issue token", logger.Fields{"error": err.Error(), "user_id": userID})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to issue token"})
 		return
 	}
