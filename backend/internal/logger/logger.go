@@ -299,6 +299,6 @@ func Request(method, path string, status int, latency time.Duration, ip string, 
 	} else if status >= 400 {
 		Warn("request completed with client error", f)
 	} else {
-		Debug("request completed", f)
+		Info("request completed", f)
 	}
 }
