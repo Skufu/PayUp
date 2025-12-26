@@ -15,6 +15,7 @@ import (
 	"github.com/Skufu/PayUp/internal/config"
 	"github.com/Skufu/PayUp/internal/db"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
+	"github.com/Skufu/PayUp/internal/events"
 	"github.com/Skufu/PayUp/internal/logger"
 	"github.com/Skufu/PayUp/internal/server"
 )
@@ -44,6 +45,9 @@ func main() {
 
 	q := sqlcdb.New(pool)
 
+	// Initialize SSE event hub
+	eventHub := events.NewHub()
+
 	srv := &http.Server{
 		Addr: ":" + cfg.Port,
 		Handler: server.New(server.Deps{
@@ -51,6 +55,7 @@ func main() {
 			Q:              q,
 			Issuer:         issuer,
 			GoogleClientID: cfg.GoogleClientID,
+			EventHub:       eventHub,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}

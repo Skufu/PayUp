@@ -28,12 +28,14 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeleteExpense(ctx context.Context, id pgtype.UUID) error
 	DeleteExpenseSplits(ctx context.Context, expenseID pgtype.UUID) error
+	DeleteExpiredInvites(ctx context.Context) error
 	DeleteOAuthAccount(ctx context.Context, arg DeleteOAuthAccountParams) error
 	DeletePaymentQR(ctx context.Context, arg DeletePaymentQRParams) error
 	DeletePushSubscription(ctx context.Context, arg DeletePushSubscriptionParams) error
 	GetExpenseForDelete(ctx context.Context, id pgtype.UUID) (GetExpenseForDeleteRow, error)
 	GetGroup(ctx context.Context, id pgtype.UUID) (GetGroupRow, error)
 	GetInviteByCode(ctx context.Context, code string) (GetInviteByCodeRow, error)
+	GetInvitePreview(ctx context.Context, code string) (GetInvitePreviewRow, error)
 	GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (string, error)
 	GetOAuthAccount(ctx context.Context, arg GetOAuthAccountParams) (OauthAccount, error)
 	GetOAuthAccountsByUser(ctx context.Context, userID pgtype.UUID) ([]OauthAccount, error)
@@ -45,6 +47,7 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error)
 	GetUserByIDWithPassword(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserPublicProfile(ctx context.Context, id pgtype.UUID) (GetUserPublicProfileRow, error)
+	IncrementInviteUseCount(ctx context.Context, code string) error
 	IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (bool, error)
 	LeaveGroup(ctx context.Context, arg LeaveGroupParams) error
 	ListActivityByGroup(ctx context.Context, arg ListActivityByGroupParams) ([]ListActivityByGroupRow, error)
@@ -62,6 +65,7 @@ type Querier interface {
 	UnsetPrimaryPaymentQRs(ctx context.Context, userID pgtype.UUID) error
 	UpdateExpense(ctx context.Context, arg UpdateExpenseParams) (UpdateExpenseRow, error)
 	UpdatePaymentDecision(ctx context.Context, arg UpdatePaymentDecisionParams) error
+	UpdatePaymentQRPhone(ctx context.Context, arg UpdatePaymentQRPhoneParams) (PaymentQrCode, error)
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error
 }

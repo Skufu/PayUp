@@ -14,6 +14,7 @@ import (
 	"github.com/Skufu/PayUp/internal/auth"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
+	"github.com/Skufu/PayUp/internal/events"
 	"github.com/Skufu/PayUp/internal/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -27,6 +28,7 @@ const MaxGroupMembers = 20
 type GroupsHandler struct {
 	Pool *pgxpool.Pool
 	Q    *sqlcdb.Queries
+	Hub  *events.Hub
 }
 
 type createGroupRequest struct {
@@ -58,6 +60,7 @@ type groupDetailResponse struct {
 type inviteResponse struct {
 	Code      string     `json:"code"`
 	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
+	MaxUses   *int32     `json:"maxUses,omitempty"`
 }
 
 func (h *GroupsHandler) List(c *gin.Context) {
@@ -241,6 +244,14 @@ func (h *GroupsHandler) CreateInvite(c *gin.Context) {
 	}
 	groupID := sqlcutil.UUID(gid)
 
+	// Parse optional request body for invite options
+	var req struct {
+		ExpiresInHours *int   `json:"expiresInHours"` // nil = 7 days default
+		MaxUses        *int32 `json:"maxUses"`        // nil = unlimited
+	}
+	// Ignore binding errors - body is optional
+	_ = c.ShouldBindJSON(&req)
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
@@ -255,20 +266,32 @@ func (h *GroupsHandler) CreateInvite(c *gin.Context) {
 	}
 
 	code := randomInviteCode(8)
-	var expiresAt *time.Time = nil
+
+	// Calculate expiration - default to 7 days
+	var expiresAt *time.Time
+	if req.ExpiresInHours == nil {
+		// Default: 7 days
+		exp := time.Now().Add(7 * 24 * time.Hour)
+		expiresAt = &exp
+	} else if *req.ExpiresInHours > 0 {
+		exp := time.Now().Add(time.Duration(*req.ExpiresInHours) * time.Hour)
+		expiresAt = &exp
+	}
+	// If ExpiresInHours is 0 or negative, expiresAt stays nil (never expires)
 
 	if err := h.Q.CreateInvite(ctx, sqlcdb.CreateInviteParams{
 		GroupID:   groupID,
 		Code:      code,
 		CreatedBy: sqlcutil.UUID(uid),
 		ExpiresAt: sqlcutil.NullTimestamptz(expiresAt),
+		MaxUses:   req.MaxUses,
 	}); err != nil {
 		logger.DBError("CreateInvite", err, logger.Fields{"group_id": gid.String()})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create invite"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, inviteResponse{Code: code, ExpiresAt: expiresAt})
+	c.JSON(http.StatusCreated, inviteResponse{Code: code, ExpiresAt: expiresAt, MaxUses: req.MaxUses})
 }
 
 func (h *GroupsHandler) JoinByCode(c *gin.Context) {
@@ -291,8 +314,16 @@ func (h *GroupsHandler) JoinByCode(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "invalid invite"})
 		return
 	}
+
+	// Check if invite has expired
 	if inv.ExpiresAt.Valid && inv.ExpiresAt.Time.Before(time.Now()) {
 		c.JSON(http.StatusGone, gin.H{"error": "invite expired"})
+		return
+	}
+
+	// Check if invite has reached max uses
+	if inv.MaxUses != nil && inv.UseCount >= *inv.MaxUses {
+		c.JSON(http.StatusGone, gin.H{"error": "invite has reached maximum uses"})
 		return
 	}
 
@@ -328,8 +359,22 @@ func (h *GroupsHandler) JoinByCode(c *gin.Context) {
 		return
 	}
 
+	// Increment invite use count
+	if err := h.Q.IncrementInviteUseCount(ctx, code); err != nil {
+		logger.DBError("IncrementInviteUseCount", err, logger.Fields{"code": code})
+		// Don't fail the join, just log the error
+	}
+
 	// Log activity
 	_ = LogActivity(ctx, h.Q, inv.GroupID, uid, "member_joined", "A new member joined the group", nil)
+
+	// Emit SSE event
+	if h.Hub != nil {
+		h.Hub.Broadcast(sqlcutil.UUIDToString(inv.GroupID), events.Event{
+			Type:    events.MemberJoined,
+			GroupID: sqlcutil.UUIDToString(inv.GroupID),
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{"groupId": sqlcutil.UUIDToString(inv.GroupID)})
 }

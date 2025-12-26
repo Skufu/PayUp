@@ -11,6 +11,7 @@ import (
 
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
+	"github.com/Skufu/PayUp/internal/events"
 	"github.com/Skufu/PayUp/internal/logger"
 	"github.com/Skufu/PayUp/internal/util"
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,7 @@ import (
 type ExpensesHandler struct {
 	Pool *pgxpool.Pool
 	Q    *sqlcdb.Queries
+	Hub  *events.Hub
 }
 
 type expenseResponse struct {
@@ -267,6 +269,14 @@ func (h *ExpensesHandler) CreateForGroup(c *gin.Context) {
 	// Log activity
 	_ = LogActivity(ctx, h.Q, groupID, uid, "expense_created", fmt.Sprintf("An expense was added: %s", req.Title), nil)
 
+	// Emit SSE event
+	if h.Hub != nil {
+		h.Hub.Broadcast(gid.String(), events.Event{
+			Type:    events.ExpenseCreated,
+			GroupID: gid.String(),
+		})
+	}
+
 	c.JSON(http.StatusCreated, resp)
 }
 
@@ -450,6 +460,14 @@ func (h *ExpensesHandler) Update(c *gin.Context) {
 	// Log activity
 	_ = LogActivity(ctx, h.Q, updatedRow.GroupID, uid, "expense_updated", fmt.Sprintf("An expense was updated: %s", req.Title), nil)
 
+	// Emit SSE event
+	if h.Hub != nil {
+		h.Hub.Broadcast(sqlcutil.UUIDToString(updatedRow.GroupID), events.Event{
+			Type:    events.ExpenseUpdated,
+			GroupID: sqlcutil.UUIDToString(updatedRow.GroupID),
+		})
+	}
+
 	c.JSON(http.StatusOK, resp)
 }
 
@@ -502,6 +520,14 @@ func (h *ExpensesHandler) Delete(c *gin.Context) {
 
 	// Log activity
 	_ = LogActivity(ctx, h.Q, exp.GroupID, uid, "expense_deleted", "An expense was deleted", nil)
+
+	// Emit SSE event
+	if h.Hub != nil {
+		h.Hub.Broadcast(sqlcutil.UUIDToString(exp.GroupID), events.Event{
+			Type:    events.ExpenseDeleted,
+			GroupID: sqlcutil.UUIDToString(exp.GroupID),
+		})
+	}
 
 	c.Status(http.StatusNoContent)
 }

@@ -83,7 +83,9 @@ CREATE TABLE group_invites (
   code       text NOT NULL UNIQUE,
   created_by uuid REFERENCES users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
-  expires_at timestamptz
+  expires_at timestamptz,
+  max_uses   integer DEFAULT NULL,
+  use_count  integer NOT NULL DEFAULT 0
 );
 
 CREATE TABLE nudges (
@@ -118,13 +120,14 @@ CREATE TABLE oauth_accounts (
 );
 
 CREATE TABLE payment_qr_codes (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  provider   text NOT NULL, -- 'gcash', 'maya', etc.
-  qr_url     text NOT NULL,
-  is_primary boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider     text NOT NULL, -- 'gcash', 'maya', etc.
+  qr_url       text NOT NULL,
+  phone_number text,           -- Optional phone number for the payment provider
+  is_primary   boolean NOT NULL DEFAULT false,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now(),
   UNIQUE (user_id, provider)
 );
 

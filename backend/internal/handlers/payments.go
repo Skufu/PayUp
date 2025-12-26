@@ -9,6 +9,7 @@ import (
 
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
+	"github.com/Skufu/PayUp/internal/events"
 	"github.com/Skufu/PayUp/internal/logger"
 	"github.com/Skufu/PayUp/internal/services"
 	"github.com/Skufu/PayUp/internal/util"
@@ -20,6 +21,7 @@ import (
 type PaymentsHandler struct {
 	Pool *pgxpool.Pool
 	Q    *sqlcdb.Queries
+	Hub  *events.Hub
 
 	UploadService *services.UploadService
 }
@@ -98,6 +100,14 @@ func (h *PaymentsHandler) Create(c *gin.Context) {
 
 	// Log activity
 	_ = LogActivity(ctx, h.Q, gid, senderID, "payment_created", fmt.Sprintf("A payment of %.2f was recorded", util.CentsToFloat(amountCents)), nil)
+
+	// Emit SSE event
+	if h.Hub != nil {
+		h.Hub.Broadcast(groupID.String(), events.Event{
+			Type:    events.PaymentCreated,
+			GroupID: groupID.String(),
+		})
+	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"id":         sqlcutil.UUIDToString(created.ID),
@@ -265,6 +275,14 @@ func (h *PaymentsHandler) review(c *gin.Context, newStatus sqlcdb.PaymentStatus)
 		action = "rejected"
 	}
 	_ = LogActivity(ctx, qtx, p.GroupID, uid, activityType, fmt.Sprintf("A payment was %s", action), nil)
+
+	// Emit SSE event
+	if h.Hub != nil {
+		h.Hub.Broadcast(sqlcutil.UUIDToString(p.GroupID), events.Event{
+			Type:    events.PaymentUpdated,
+			GroupID: sqlcutil.UUIDToString(p.GroupID),
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{"status": string(newStatus)})
 }

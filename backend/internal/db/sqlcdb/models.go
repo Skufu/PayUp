@@ -101,6 +101,8 @@ type GroupInvite struct {
 	CreatedBy pgtype.UUID        `json:"created_by"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	MaxUses   *int32             `json:"max_uses"`
+	UseCount  int32              `json:"use_count"`
 }
 
 type GroupMember struct {
@@ -145,13 +147,14 @@ type Payment struct {
 }
 
 type PaymentQrCode struct {
-	ID        pgtype.UUID        `json:"id"`
-	UserID    pgtype.UUID        `json:"user_id"`
-	Provider  string             `json:"provider"`
-	QrUrl     string             `json:"qr_url"`
-	IsPrimary bool               `json:"is_primary"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID          pgtype.UUID        `json:"id"`
+	UserID      pgtype.UUID        `json:"user_id"`
+	Provider    string             `json:"provider"`
+	QrUrl       string             `json:"qr_url"`
+	PhoneNumber *string            `json:"phone_number"`
+	IsPrimary   bool               `json:"is_primary"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
 type PushSubscription struct {

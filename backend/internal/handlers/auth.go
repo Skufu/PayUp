@@ -43,11 +43,12 @@ type refreshRequest struct {
 }
 
 type paymentQRResponse struct {
-	ID        string    `json:"id"`
-	Provider  string    `json:"provider"`
-	QRURL     string    `json:"qrUrl"`
-	IsPrimary bool      `json:"isPrimary"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID          string    `json:"id"`
+	Provider    string    `json:"provider"`
+	QRURL       string    `json:"qrUrl"`
+	PhoneNumber *string   `json:"phoneNumber,omitempty"`
+	IsPrimary   bool      `json:"isPrimary"`
+	CreatedAt   time.Time `json:"createdAt"`
 }
 
 type userResponse struct {
@@ -324,14 +325,31 @@ func (h *AuthHandler) GetUserPublicProfile(c *gin.Context) {
 		return
 	}
 
+	// Fetch payment QRs for this user
+	qrs, _ := h.Q.GetPaymentQRsByUser(ctx, sqlcutil.UUID(id))
+	var paymentQRs []paymentQRResponse
+	for _, qr := range qrs {
+		ct, _ := sqlcutil.Time(qr.CreatedAt)
+		paymentQRs = append(paymentQRs, paymentQRResponse{
+			ID:          sqlcutil.UUIDToString(qr.ID),
+			Provider:    qr.Provider,
+			QRURL:       qr.QrUrl,
+			PhoneNumber: qr.PhoneNumber,
+			IsPrimary:   qr.IsPrimary,
+			CreatedAt:   ct,
+		})
+	}
+
 	// Keep response shape aligned with AuthUser fields.
 	c.JSON(http.StatusOK, gin.H{
-		"id":        sqlcutil.UUIDToString(u.ID),
-		"name":      u.Name,
-		"avatarUrl": u.AvatarUrl,
-		"qrUrl":     u.QrUrl,
+		"id":         sqlcutil.UUIDToString(u.ID),
+		"name":       u.Name,
+		"avatarUrl":  u.AvatarUrl,
+		"qrUrl":      u.QrUrl, // Keep for backwards compatibility
+		"paymentQRs": paymentQRs,
 	})
 }
+
 
 type googleAuthRequest struct {
 	IDToken string `json:"idToken"`
@@ -603,11 +621,12 @@ func (h *AuthHandler) toUserResponse(ctx context.Context, u sqlcdb.GetUserByIDRo
 		for _, qr := range qrs {
 			ct, _ := sqlcutil.Time(qr.CreatedAt)
 			res.PaymentQRs = append(res.PaymentQRs, paymentQRResponse{
-				ID:        sqlcutil.UUIDToString(qr.ID),
-				Provider:  qr.Provider,
-				QRURL:     qr.QrUrl,
-				IsPrimary: qr.IsPrimary,
-				CreatedAt: ct,
+				ID:          sqlcutil.UUIDToString(qr.ID),
+				Provider:    qr.Provider,
+				QRURL:       qr.QrUrl,
+				PhoneNumber: qr.PhoneNumber,
+				IsPrimary:   qr.IsPrimary,
+				CreatedAt:   ct,
 			})
 		}
 	}
@@ -634,11 +653,12 @@ func (h *AuthHandler) ListPaymentQRs(c *gin.Context) {
 	for _, qr := range qrs {
 		ct, _ := sqlcutil.Time(qr.CreatedAt)
 		res = append(res, paymentQRResponse{
-			ID:        sqlcutil.UUIDToString(qr.ID),
-			Provider:  qr.Provider,
-			QRURL:     qr.QrUrl,
-			IsPrimary: qr.IsPrimary,
-			CreatedAt: ct,
+			ID:          sqlcutil.UUIDToString(qr.ID),
+			Provider:    qr.Provider,
+			QRURL:       qr.QrUrl,
+			PhoneNumber: qr.PhoneNumber,
+			IsPrimary:   qr.IsPrimary,
+			CreatedAt:   ct,
 		})
 	}
 
@@ -657,33 +677,51 @@ func (h *AuthHandler) AddPaymentQR(c *gin.Context) {
 		return
 	}
 
+	// Optional phone number for the payment provider
+	phoneNumber := strings.TrimSpace(c.PostForm("phone_number"))
+	var phoneNumberPtr *string
+	if phoneNumber != "" {
+		phoneNumberPtr = &phoneNumber
+	}
+
+	// QR image is optional - either qr_image or phone_number is required
+	var url string
 	file, header, err := c.Request.FormFile("qr_image")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "qr_image is required"})
+	hasQRImage := err == nil
+
+	if hasQRImage {
+		defer file.Close()
+	}
+
+	// At least one of qr_image or phone_number is required
+	if !hasQRImage && phoneNumber == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "either qr_image or phone_number is required"})
 		return
 	}
-	defer file.Close()
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
 	defer cancel()
 
-	if h.UploadService == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "upload service not available"})
-		return
-	}
+	// Upload QR image if provided
+	if hasQRImage {
+		if h.UploadService == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "upload service not available"})
+			return
+		}
 
-	// Upload QR image
-	url, err := h.UploadService.UploadPaymentQR(ctx, file, header, uid.String())
-	if err != nil {
-		logger.Error("payment QR upload failed", logger.Fields{
-			"user_id":   uid.String(),
-			"provider":  provider,
-			"filename":  header.Filename,
-			"file_size": header.Size,
-			"error":     err.Error(),
-		})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("upload failed: %v", err)})
-		return
+		uploadedUrl, uploadErr := h.UploadService.UploadPaymentQR(ctx, file, header, uid.String())
+		if uploadErr != nil {
+			logger.Error("payment QR upload failed", logger.Fields{
+				"user_id":   uid.String(),
+				"provider":  provider,
+				"filename":  header.Filename,
+				"file_size": header.Size,
+				"error":     uploadErr.Error(),
+			})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("upload failed: %v", uploadErr)})
+			return
+		}
+		url = uploadedUrl
 	}
 
 	// Check if this is the first QR, if so make it primary
@@ -691,10 +729,11 @@ func (h *AuthHandler) AddPaymentQR(c *gin.Context) {
 	isPrimary := len(existing) == 0
 
 	qr, err := h.Q.CreatePaymentQR(ctx, sqlcdb.CreatePaymentQRParams{
-		UserID:    sqlcutil.UUID(uid),
-		Provider:  provider,
-		QrUrl:     url,
-		IsPrimary: isPrimary,
+		UserID:      sqlcutil.UUID(uid),
+		Provider:    provider,
+		QrUrl:       url,
+		PhoneNumber: phoneNumberPtr,
+		IsPrimary:   isPrimary,
 	})
 	if err != nil {
 		logger.Error("failed to save payment QR to database", logger.Fields{
@@ -710,11 +749,12 @@ func (h *AuthHandler) AddPaymentQR(c *gin.Context) {
 
 	ct, _ := sqlcutil.Time(qr.CreatedAt)
 	c.JSON(http.StatusCreated, paymentQRResponse{
-		ID:        sqlcutil.UUIDToString(qr.ID),
-		Provider:  qr.Provider,
-		QRURL:     qr.QrUrl,
-		IsPrimary: qr.IsPrimary,
-		CreatedAt: ct,
+		ID:          sqlcutil.UUIDToString(qr.ID),
+		Provider:    qr.Provider,
+		QRURL:       qr.QrUrl,
+		PhoneNumber: qr.PhoneNumber,
+		IsPrimary:   qr.IsPrimary,
+		CreatedAt:   ct,
 	})
 }
 
@@ -778,4 +818,56 @@ func (h *AuthHandler) SetPrimaryPaymentQR(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "primary payment QR updated"})
+}
+
+type updatePhoneRequest struct {
+	PhoneNumber string `json:"phoneNumber"`
+}
+
+func (h *AuthHandler) UpdatePaymentQRPhone(c *gin.Context) {
+	uid, ok := mustUserID(c)
+	if !ok {
+		return
+	}
+
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var req updatePhoneRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	var phonePtr *string
+	phone := strings.TrimSpace(req.PhoneNumber)
+	if phone != "" {
+		phonePtr = &phone
+	}
+
+	qr, err := h.Q.UpdatePaymentQRPhone(ctx, sqlcdb.UpdatePaymentQRPhoneParams{
+		ID:          sqlcutil.UUID(id),
+		UserID:      sqlcutil.UUID(uid),
+		PhoneNumber: phonePtr,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update phone number"})
+		return
+	}
+
+	ct, _ := sqlcutil.Time(qr.CreatedAt)
+	c.JSON(http.StatusOK, paymentQRResponse{
+		ID:          sqlcutil.UUIDToString(qr.ID),
+		Provider:    qr.Provider,
+		QRURL:       qr.QrUrl,
+		PhoneNumber: qr.PhoneNumber,
+		IsPrimary:   qr.IsPrimary,
+		CreatedAt:   ct,
+	})
 }

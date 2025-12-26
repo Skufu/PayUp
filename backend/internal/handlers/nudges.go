@@ -8,6 +8,7 @@ import (
 
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
+	"github.com/Skufu/PayUp/internal/events"
 	"github.com/Skufu/PayUp/internal/util"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -17,6 +18,7 @@ import (
 type NudgesHandler struct {
 	Pool *pgxpool.Pool
 	Q    *sqlcdb.Queries
+	Hub  *events.Hub
 }
 
 type createNudgeRequest struct {
@@ -129,6 +131,14 @@ func (h *NudgesHandler) Create(c *gin.Context) {
 			senderName+" nudged you about ₱"+util.CentsToMoneyString(util.MoneyToCents(amount)),
 		)
 	}(uid, debtorID, req.Amount)
+
+	// Emit SSE event to receiver (nudge is per-user, but we use group context)
+	if h.Hub != nil {
+		h.Hub.Broadcast(groupUUID.String(), events.Event{
+			Type:    events.NudgeReceived,
+			GroupID: groupUUID.String(),
+		})
+	}
 
 	createdAt, _ := sqlcutil.Time(nudge.CreatedAt)
 	c.JSON(http.StatusCreated, gin.H{

@@ -12,19 +12,21 @@ import (
 )
 
 const createPaymentQR = `-- name: CreatePaymentQR :one
-INSERT INTO payment_qr_codes (user_id, provider, qr_url, is_primary)
-VALUES ($1, $2, $3, $4)
+INSERT INTO payment_qr_codes (user_id, provider, qr_url, phone_number, is_primary)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (user_id, provider) DO UPDATE
 SET qr_url = EXCLUDED.qr_url,
+    phone_number = EXCLUDED.phone_number,
     updated_at = now()
-RETURNING id, user_id, provider, qr_url, is_primary, created_at, updated_at
+RETURNING id, user_id, provider, qr_url, phone_number, is_primary, created_at, updated_at
 `
 
 type CreatePaymentQRParams struct {
-	UserID    pgtype.UUID `json:"user_id"`
-	Provider  string      `json:"provider"`
-	QrUrl     string      `json:"qr_url"`
-	IsPrimary bool        `json:"is_primary"`
+	UserID      pgtype.UUID `json:"user_id"`
+	Provider    string      `json:"provider"`
+	QrUrl       string      `json:"qr_url"`
+	PhoneNumber *string     `json:"phone_number"`
+	IsPrimary   bool        `json:"is_primary"`
 }
 
 func (q *Queries) CreatePaymentQR(ctx context.Context, arg CreatePaymentQRParams) (PaymentQrCode, error) {
@@ -32,6 +34,7 @@ func (q *Queries) CreatePaymentQR(ctx context.Context, arg CreatePaymentQRParams
 		arg.UserID,
 		arg.Provider,
 		arg.QrUrl,
+		arg.PhoneNumber,
 		arg.IsPrimary,
 	)
 	var i PaymentQrCode
@@ -40,6 +43,7 @@ func (q *Queries) CreatePaymentQR(ctx context.Context, arg CreatePaymentQRParams
 		&i.UserID,
 		&i.Provider,
 		&i.QrUrl,
+		&i.PhoneNumber,
 		&i.IsPrimary,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -63,7 +67,7 @@ func (q *Queries) DeletePaymentQR(ctx context.Context, arg DeletePaymentQRParams
 }
 
 const getPaymentQRByProvider = `-- name: GetPaymentQRByProvider :one
-SELECT id, user_id, provider, qr_url, is_primary, created_at, updated_at FROM payment_qr_codes
+SELECT id, user_id, provider, qr_url, phone_number, is_primary, created_at, updated_at FROM payment_qr_codes
 WHERE user_id = $1 AND provider = $2
 `
 
@@ -80,6 +84,7 @@ func (q *Queries) GetPaymentQRByProvider(ctx context.Context, arg GetPaymentQRBy
 		&i.UserID,
 		&i.Provider,
 		&i.QrUrl,
+		&i.PhoneNumber,
 		&i.IsPrimary,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -88,7 +93,7 @@ func (q *Queries) GetPaymentQRByProvider(ctx context.Context, arg GetPaymentQRBy
 }
 
 const getPaymentQRsByUser = `-- name: GetPaymentQRsByUser :many
-SELECT id, user_id, provider, qr_url, is_primary, created_at, updated_at FROM payment_qr_codes
+SELECT id, user_id, provider, qr_url, phone_number, is_primary, created_at, updated_at FROM payment_qr_codes
 WHERE user_id = $1
 ORDER BY is_primary DESC, provider ASC
 `
@@ -107,6 +112,7 @@ func (q *Queries) GetPaymentQRsByUser(ctx context.Context, userID pgtype.UUID) (
 			&i.UserID,
 			&i.Provider,
 			&i.QrUrl,
+			&i.PhoneNumber,
 			&i.IsPrimary,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -146,4 +152,33 @@ WHERE user_id = $1
 func (q *Queries) UnsetPrimaryPaymentQRs(ctx context.Context, userID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, unsetPrimaryPaymentQRs, userID)
 	return err
+}
+
+const updatePaymentQRPhone = `-- name: UpdatePaymentQRPhone :one
+UPDATE payment_qr_codes
+SET phone_number = $3, updated_at = now()
+WHERE id = $1 AND user_id = $2
+RETURNING id, user_id, provider, qr_url, phone_number, is_primary, created_at, updated_at
+`
+
+type UpdatePaymentQRPhoneParams struct {
+	ID          pgtype.UUID `json:"id"`
+	UserID      pgtype.UUID `json:"user_id"`
+	PhoneNumber *string     `json:"phone_number"`
+}
+
+func (q *Queries) UpdatePaymentQRPhone(ctx context.Context, arg UpdatePaymentQRPhoneParams) (PaymentQrCode, error) {
+	row := q.db.QueryRow(ctx, updatePaymentQRPhone, arg.ID, arg.UserID, arg.PhoneNumber)
+	var i PaymentQrCode
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Provider,
+		&i.QrUrl,
+		&i.PhoneNumber,
+		&i.IsPrimary,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Skufu/PayUp/internal/auth"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
+	"github.com/Skufu/PayUp/internal/events"
 	"github.com/Skufu/PayUp/internal/handlers"
 	"github.com/Skufu/PayUp/internal/logger"
 	"github.com/Skufu/PayUp/internal/middleware"
@@ -19,6 +20,7 @@ type Deps struct {
 	Q              *sqlcdb.Queries
 	Issuer         auth.Issuer
 	GoogleClientID string
+	EventHub       *events.Hub
 }
 
 // New constructs the HTTP router for the PayUp API.
@@ -91,11 +93,12 @@ func New(deps Deps) *gin.Engine {
 			paymentQRGroup.POST("", ah.AddPaymentQR)
 			paymentQRGroup.DELETE("/:id", ah.DeletePaymentQR)
 			paymentQRGroup.PATCH("/:id/primary", ah.SetPrimaryPaymentQR)
+		paymentQRGroup.PATCH("/:id/phone", ah.UpdatePaymentQRPhone)
 		}
 
 		v1.GET("/users/:id/profile", auth.Middleware(deps.Issuer), ah.GetUserPublicProfile)
 
-		gh := &handlers.GroupsHandler{Pool: deps.Pool, Q: deps.Q}
+		gh := &handlers.GroupsHandler{Pool: deps.Pool, Q: deps.Q, Hub: deps.EventHub}
 		groups := v1.Group("/groups", auth.Middleware(deps.Issuer))
 		{
 			groups.GET("", gh.List)
@@ -107,7 +110,19 @@ func New(deps Deps) *gin.Engine {
 			groups.DELETE("/:id/members/:userId", gh.RemoveMember)
 			groups.GET("/:id/activity", (&handlers.ActivityHandler{Pool: deps.Pool, Q: deps.Q}).ListByGroup)
 		}
-		eh := &handlers.ExpensesHandler{Pool: deps.Pool, Q: deps.Q}
+
+		// Invite preview (public, no auth required)
+		ih := &handlers.InvitesHandler{Pool: deps.Pool, Q: deps.Q}
+		v1.GET("/invites/:code/preview", ih.Preview)
+
+		// Start invite cleanup background job
+		handlers.StartInviteCleanupJob(deps.Pool, deps.Q)
+
+		// SSE events endpoint (no auth middleware - handles auth via query param)
+		evh := &handlers.EventsHandler{Hub: deps.EventHub, Issuer: deps.Issuer, Q: deps.Q}
+		v1.GET("/groups/:id/events", evh.Stream)
+
+		eh := &handlers.ExpensesHandler{Pool: deps.Pool, Q: deps.Q, Hub: deps.EventHub}
 		v1.GET("/groups/:id/expenses", auth.Middleware(deps.Issuer), eh.ListByGroup)
 		v1.POST("/groups/:id/expenses", auth.Middleware(deps.Issuer), eh.CreateForGroup)
 		v1.PATCH("/expenses/:id", auth.Middleware(deps.Issuer), eh.Update)
@@ -116,7 +131,7 @@ func New(deps Deps) *gin.Engine {
 		bh := &handlers.BalancesHandler{Q: deps.Q}
 		v1.GET("/groups/:id/balances", auth.Middleware(deps.Issuer), bh.GetByGroup)
 
-		ph := &handlers.PaymentsHandler{Pool: deps.Pool, Q: deps.Q, UploadService: uploadSvc}
+		ph := &handlers.PaymentsHandler{Pool: deps.Pool, Q: deps.Q, UploadService: uploadSvc, Hub: deps.EventHub}
 		// Payments with stricter rate limiting
 		payments := v1.Group("/payments", auth.Middleware(deps.Issuer))
 		payments.Use(middleware.PaymentRateLimit())
@@ -126,7 +141,7 @@ func New(deps Deps) *gin.Engine {
 		payments.PATCH("/:id/reject", ph.Reject)
 		payments.POST("/upload-proof", ph.UploadProof)
 
-		nh := &handlers.NudgesHandler{Pool: deps.Pool, Q: deps.Q}
+		nh := &handlers.NudgesHandler{Pool: deps.Pool, Q: deps.Q, Hub: deps.EventHub}
 		nudges := v1.Group("/nudges", auth.Middleware(deps.Issuer))
 		nudges.POST("", nh.Create)
 		nudges.GET("", nh.ListMine)

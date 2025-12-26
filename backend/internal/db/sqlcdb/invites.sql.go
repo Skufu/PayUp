@@ -12,8 +12,8 @@ import (
 )
 
 const createInvite = `-- name: CreateInvite :exec
-INSERT INTO group_invites (group_id, code, created_by, expires_at)
-VALUES ($1, $2, $3, $4)
+INSERT INTO group_invites (group_id, code, created_by, expires_at, max_uses)
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type CreateInviteParams struct {
@@ -21,6 +21,7 @@ type CreateInviteParams struct {
 	Code      string             `json:"code"`
 	CreatedBy pgtype.UUID        `json:"created_by"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	MaxUses   *int32             `json:"max_uses"`
 }
 
 func (q *Queries) CreateInvite(ctx context.Context, arg CreateInviteParams) error {
@@ -29,12 +30,24 @@ func (q *Queries) CreateInvite(ctx context.Context, arg CreateInviteParams) erro
 		arg.Code,
 		arg.CreatedBy,
 		arg.ExpiresAt,
+		arg.MaxUses,
 	)
 	return err
 }
 
+const deleteExpiredInvites = `-- name: DeleteExpiredInvites :exec
+DELETE FROM group_invites
+WHERE (expires_at IS NOT NULL AND expires_at < NOW())
+   OR (max_uses IS NOT NULL AND use_count >= max_uses)
+`
+
+func (q *Queries) DeleteExpiredInvites(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, deleteExpiredInvites)
+	return err
+}
+
 const getInviteByCode = `-- name: GetInviteByCode :one
-SELECT group_id, expires_at
+SELECT group_id, expires_at, max_uses, use_count
 FROM group_invites
 WHERE code = $1
 `
@@ -42,11 +55,72 @@ WHERE code = $1
 type GetInviteByCodeRow struct {
 	GroupID   pgtype.UUID        `json:"group_id"`
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	MaxUses   *int32             `json:"max_uses"`
+	UseCount  int32              `json:"use_count"`
 }
 
 func (q *Queries) GetInviteByCode(ctx context.Context, code string) (GetInviteByCodeRow, error) {
 	row := q.db.QueryRow(ctx, getInviteByCode, code)
 	var i GetInviteByCodeRow
-	err := row.Scan(&i.GroupID, &i.ExpiresAt)
+	err := row.Scan(
+		&i.GroupID,
+		&i.ExpiresAt,
+		&i.MaxUses,
+		&i.UseCount,
+	)
 	return i, err
+}
+
+const getInvitePreview = `-- name: GetInvitePreview :one
+SELECT 
+    gi.group_id,
+    gi.expires_at,
+    gi.max_uses,
+    gi.use_count,
+    g.name AS group_name,
+    (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = gi.group_id) AS member_count,
+    u.name AS created_by_name,
+    u.avatar_url AS created_by_avatar
+FROM group_invites gi
+JOIN groups g ON g.id = gi.group_id
+LEFT JOIN users u ON u.id = gi.created_by
+WHERE gi.code = $1
+`
+
+type GetInvitePreviewRow struct {
+	GroupID         pgtype.UUID        `json:"group_id"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+	MaxUses         *int32             `json:"max_uses"`
+	UseCount        int32              `json:"use_count"`
+	GroupName       string             `json:"group_name"`
+	MemberCount     int64              `json:"member_count"`
+	CreatedByName   *string            `json:"created_by_name"`
+	CreatedByAvatar *string            `json:"created_by_avatar"`
+}
+
+func (q *Queries) GetInvitePreview(ctx context.Context, code string) (GetInvitePreviewRow, error) {
+	row := q.db.QueryRow(ctx, getInvitePreview, code)
+	var i GetInvitePreviewRow
+	err := row.Scan(
+		&i.GroupID,
+		&i.ExpiresAt,
+		&i.MaxUses,
+		&i.UseCount,
+		&i.GroupName,
+		&i.MemberCount,
+		&i.CreatedByName,
+		&i.CreatedByAvatar,
+	)
+	return i, err
+}
+
+const incrementInviteUseCount = `-- name: IncrementInviteUseCount :exec
+UPDATE group_invites
+SET use_count = use_count + 1
+WHERE code = $1
+`
+
+func (q *Queries) IncrementInviteUseCount(ctx context.Context, code string) error {
+	_, err := q.db.Exec(ctx, incrementInviteUseCount, code)
+	return err
 }
