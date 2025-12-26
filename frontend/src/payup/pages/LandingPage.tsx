@@ -290,6 +290,84 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* How It Works Section */}
+      <section className="py-20 md:py-32 px-6 relative z-10">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="font-display text-4xl md:text-6xl font-bold mb-6 text-white">
+              HOW IT <span className="text-[#dfff4f]">WORKS</span>
+            </h2>
+            <p className="text-gray-500 text-sm uppercase tracking-widest max-w-xl mx-auto">
+              Three simple steps to never awkwardly ask for money again
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+            {[
+              {
+                step: "01",
+                title: "Create a Group",
+                desc: "Start a group for your trip, apartment, or dinner squad. Invite friends via link.",
+                // Replace with your actual image path:
+                // image: "/images/step-1-create-group.png"
+                image: null,
+              },
+              {
+                step: "02",
+                title: "Add Expenses",
+                desc: "Snap a receipt or manually add who paid and who owes. We handle the math.",
+                image: null,
+              },
+              {
+                step: "03",
+                title: "Settle Up",
+                desc: "See who owes what at a glance. Send a nudge or settle with one tap.",
+                image: null,
+              },
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.15, duration: 0.6 }}
+                viewport={{ once: true }}
+                className="text-center"
+              >
+                {/* Image Placeholder */}
+                <div className="relative mx-auto mb-8 w-full max-w-[280px] aspect-[9/16] bg-[#131316] border border-white/10 rounded-3xl overflow-hidden">
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
+                      <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4">
+                        <span className="text-2xl">📱</span>
+                      </div>
+                      <span className="text-xs uppercase tracking-widest">Screenshot {item.step}</span>
+                    </div>
+                  )}
+                  {/* Step number badge */}
+                  <div className="absolute top-4 left-4 w-10 h-10 rounded-full bg-[#dfff4f] text-black font-bold text-sm flex items-center justify-center">
+                    {item.step}
+                  </div>
+                </div>
+
+                <h3 className="font-display text-xl md:text-2xl font-bold mb-3 text-white">{item.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Stats Section */}
       <section className="py-20 md:py-32 px-6 bg-[#0a0a0c]/50 relative z-10 backdrop-blur-md">
         <div className="max-w-7xl mx-auto">
@@ -309,9 +387,9 @@ export function LandingPage() {
                   viewport={{ once: true }}
                   className="font-display text-4xl md:text-6xl font-bold mb-2 text-white"
                 >
-                  $2M+
+                  100%
                 </motion.div>
-                <div className="text-[10px] uppercase tracking-widest text-[#dfff4f]">Settled</div>
+                <div className="text-[10px] uppercase tracking-widest text-[#dfff4f]">Free Forever</div>
               </div>
               <div>
                 <motion.div
@@ -321,9 +399,9 @@ export function LandingPage() {
                   transition={{ delay: 0.1 }}
                   className="font-display text-4xl md:text-6xl font-bold mb-2 text-white"
                 >
-                  50k+
+                  &lt;1min
                 </motion.div>
-                <div className="text-[10px] uppercase tracking-widest text-[#ff4f99]">Users</div>
+                <div className="text-[10px] uppercase tracking-widest text-[#ff4f99]">To Get Started</div>
               </div>
             </div>
           </div>

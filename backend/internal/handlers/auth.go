@@ -675,6 +675,13 @@ func (h *AuthHandler) AddPaymentQR(c *gin.Context) {
 	// Upload QR image
 	url, err := h.UploadService.UploadPaymentQR(ctx, file, header, uid.String())
 	if err != nil {
+		logger.Error("payment QR upload failed", logger.Fields{
+			"user_id":   uid.String(),
+			"provider":  provider,
+			"filename":  header.Filename,
+			"file_size": header.Size,
+			"error":     err.Error(),
+		})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("upload failed: %v", err)})
 		return
 	}
@@ -690,6 +697,13 @@ func (h *AuthHandler) AddPaymentQR(c *gin.Context) {
 		IsPrimary: isPrimary,
 	})
 	if err != nil {
+		logger.Error("failed to save payment QR to database", logger.Fields{
+			"user_id":    uid.String(),
+			"provider":   provider,
+			"qr_url":     url,
+			"is_primary": isPrimary,
+			"error":      err.Error(),
+		})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save payment QR"})
 		return
 	}
