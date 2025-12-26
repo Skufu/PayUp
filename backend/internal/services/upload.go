@@ -54,7 +54,7 @@ func NewUploadService() (*UploadService, error) {
 func validateImageExt(filename string) error {
 	ext := strings.ToLower(filepath.Ext(filename))
 	switch ext {
-	case ".jpg", ".jpeg", ".png", ".webp":
+	case ".jpg", ".jpeg", ".jfif", ".png", ".webp":
 		return nil
 	default:
 		return fmt.Errorf("invalid file type: only jpg, png, webp allowed")
