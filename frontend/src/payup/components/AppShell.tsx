@@ -162,9 +162,13 @@ export const AppShell = memo(function AppShell({
                 className="flex items-center gap-2 bg-white/5 px-2 py-1.5 rounded-full border border-white/10 hover:bg-white/10 transition-colors"
               >
                 <div
-                  className={`w-6 h-6 rounded-full ${currentUser.color} flex items-center justify-center text-[10px] text-black font-bold`}
+                  className={`w-6 h-6 rounded-full ${currentUser.avatarUrl ? '' : currentUser.color} flex items-center justify-center text-[10px] text-black font-bold overflow-hidden`}
                 >
-                  {currentUser.avatar}
+                  {currentUser.avatarUrl ? (
+                    <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    currentUser.avatar
+                  )}
                 </div>
                 <ChevronDown size={12} className="text-gray-400 hidden md:block" />
               </button>

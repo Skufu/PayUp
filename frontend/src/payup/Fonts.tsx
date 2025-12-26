@@ -103,6 +103,25 @@ export function Fonts() {
         bottom: 0px;
         right: 0px;
       }
+
+      .pink-border {
+        position: relative;
+      }
+      .pink-border::after {
+        content: '';
+        position: absolute;
+        bottom: -4px;
+        right: -4px;
+        width: 100%;
+        height: 100%;
+        border: 1px solid var(--color-secondary);
+        z-index: -1;
+        transition: all 0.2s;
+      }
+      .pink-border:active::after {
+        bottom: 0px;
+        right: 0px;
+      }
     `}</style>
   )
 }

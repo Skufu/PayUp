@@ -46,8 +46,12 @@ export function SideMenuContent({
         <p className="text-xs text-gray-500 font-mono">Manage your trips</p>
 
         <div className="mt-5 flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full ${currentUser.color} flex items-center justify-center text-black font-bold`}>
-            {currentUser.avatar}
+          <div className={`w-10 h-10 rounded-full ${currentUser.avatarUrl ? '' : currentUser.color} flex items-center justify-center text-black font-bold overflow-hidden`}>
+            {currentUser.avatarUrl ? (
+              <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              currentUser.avatar
+            )}
           </div>
           <div className="min-w-0">
             <div className="text-sm font-bold text-white truncate">{currentUser.name}</div>
@@ -136,11 +140,14 @@ export function SideMenu({
   const [isClosing, setIsClosing] = useState(false)
   const [shouldRender, setShouldRender] = useState(false)
 
+  // Sync animation state with isOpen prop - intentional pattern for slide animation
   useLayoutEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (isOpen) {
       setShouldRender(true)
       setIsClosing(false)
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [isOpen])
 
   const handleClose = useCallback(() => {

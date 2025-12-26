@@ -11,6 +11,7 @@ import { SideMenu, SideMenuContent } from './components/modals/SideMenu'
 import { ConfirmDialog } from './components/modals/ConfirmDialog'
 import { api } from './api/endpoints'
 import { useAuth } from './auth/useAuth'
+import { useGroupEvents } from './hooks/useGroupEvents'
 import { pushManager } from './push/pushManager'
 import type { Expense, Payment, User } from './types'
 
@@ -97,6 +98,9 @@ export function PayUpApp() {
   })
 
   const effectiveGroupId = currentGroupId ?? groupsQuery.data?.[0]?.id ?? null
+
+  // Subscribe to real-time SSE updates for the current group
+  useGroupEvents(effectiveGroupId)
 
   const groupDetailQuery = useQuery({
     queryKey: ['group', effectiveGroupId],
@@ -286,8 +290,8 @@ export function PayUpApp() {
     setIsAddModalOpen(true)
   }, [])
 
-  const handleGenerateInvite = useCallback(async (groupId: string) => {
-    const result = await api.createInvite(groupId)
+  const handleGenerateInvite = useCallback(async (groupId: string, options?: { expiresInHours?: number; maxUses?: number }) => {
+    const result = await api.createInvite(groupId, options)
     return result
   }, [])
 

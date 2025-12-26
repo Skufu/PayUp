@@ -33,6 +33,7 @@ type QRState = {
   provider: string
   file: File | null
   preview: string
+  phoneNumber: string
 }
 
 export function OnboardingPage() {
@@ -48,8 +49,8 @@ export function OnboardingPage() {
 
   // Payment QRs
   const [paymentQRs, setPaymentQRs] = useState<Record<string, QRState>>({
-    gcash: { provider: 'gcash', file: null, preview: '' },
-    maya: { provider: 'maya', file: null, preview: '' }
+    gcash: { provider: 'gcash', file: null, preview: '', phoneNumber: '' },
+    maya: { provider: 'maya', file: null, preview: '', phoneNumber: '' }
   })
 
   const [activeProvider, setActiveProvider] = useState<string | null>(null)
@@ -84,6 +85,7 @@ export function OnboardingPage() {
       setPaymentQRs(prev => ({
         ...prev,
         [activeProvider]: {
+          ...prev[activeProvider],
           provider: activeProvider,
           file,
           preview: String(reader.result ?? '')
@@ -111,15 +113,16 @@ export function OnboardingPage() {
       // 2. Upload payment QRs
       for (const key in paymentQRs) {
         const qr = paymentQRs[key]
-        if (qr.file) {
-          await api.addPaymentQR(qr.provider, qr.file)
+        if (qr.file || qr.phoneNumber) {
+          await api.addPaymentQR(qr.provider, qr.file || undefined, qr.phoneNumber || undefined)
         }
       }
 
       await refreshMe()
 
-      // Mark onboarding as complete
+      // Mark onboarding as complete and clear fresh registration flag
       localStorage.setItem('payup_onboarding_complete', 'true')
+      sessionStorage.removeItem('payup_fresh_registration')
       navigate('/app', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save profile')
@@ -130,6 +133,7 @@ export function OnboardingPage() {
 
   const handleSkipToApp = () => {
     localStorage.setItem('payup_onboarding_complete', 'true')
+    sessionStorage.removeItem('payup_fresh_registration')
     navigate('/app', { replace: true })
   }
 
@@ -141,7 +145,7 @@ export function OnboardingPage() {
     }
   }
 
-  const hasAnyQR = useMemo(() => Object.values(paymentQRs).some(qr => !!qr.preview), [paymentQRs])
+  const hasAnyPaymentInfo = useMemo(() => Object.values(paymentQRs).some(qr => !!qr.preview || !!qr.phoneNumber.trim()), [paymentQRs])
 
   return (
     <div className="min-h-screen bg-[#050507] text-white flex flex-col font-sans">
@@ -261,38 +265,67 @@ export function OnboardingPage() {
               <div className="grid grid-cols-1 gap-4">
                 {PAYMENT_PROVIDERS.map((provider) => {
                   const hasQR = !!paymentQRs[provider.id]?.preview
+                  const phoneValue = paymentQRs[provider.id]?.phoneNumber || ''
                   return (
                     <div
                       key={provider.id}
-                      onClick={() => {
-                        setActiveProvider(provider.id)
-                        qrInputRef.current?.click()
-                      }}
-                      className={`relative group p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-4 ${hasQR
+                      className={`relative p-4 rounded-2xl border transition-all ${hasQR
                         ? 'bg-[#131316] border-[#dfff4f]/30 ring-1 ring-[#dfff4f]/20'
-                        : 'bg-[#131316] border-white/5 hover:border-white/20'
+                        : 'bg-[#131316] border-white/5'
                         }`}
                     >
                       <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner"
-                        style={{ backgroundColor: provider.lightColor }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setActiveProvider(provider.id)
+                          qrInputRef.current?.click()
+                        }}
+                        className="flex items-center gap-4 cursor-pointer group"
                       >
-                        {provider.icon}
-                      </div>
-                      <div className="flex-1 text-left">
-                        <div className="font-bold text-lg">{provider.name}</div>
-                        <div className="text-xs text-gray-500 font-mono">{hasQR ? 'QR Uploaded' : provider.description}</div>
-                      </div>
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${hasQR ? 'bg-[#dfff4f] text-black scale-100' : 'bg-white/5 text-transparent scale-75 group-hover:bg-white/10'
-                        }`}>
-                        <Check size={14} className={hasQR ? 'opacity-100' : 'opacity-0'} />
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner"
+                          style={{ backgroundColor: provider.lightColor }}
+                        >
+                          {provider.icon}
+                        </div>
+                        <div className="flex-1 text-left">
+                          <div className="font-bold text-lg">{provider.name}</div>
+                          <div className="text-xs text-gray-500 font-mono">{hasQR ? 'QR Uploaded' : 'Tap to upload QR'}</div>
+                        </div>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${hasQR ? 'bg-[#dfff4f] text-black scale-100' : 'bg-white/5 text-transparent scale-75 group-hover:bg-white/10'
+                          }`}>
+                          <Check size={14} className={hasQR ? 'opacity-100' : 'opacity-0'} />
+                        </div>
+
+                        {hasQR && (
+                          <div className="absolute -top-2 -right-2 w-14 h-14 bg-white p-1 rounded-lg border-2 border-[#131316] shadow-xl rotate-3">
+                            <img src={paymentQRs[provider.id].preview} alt="QR" className="w-full h-full object-contain mix-blend-multiply" />
+                          </div>
+                        )}
                       </div>
 
-                      {hasQR && (
-                        <div className="absolute -top-2 -right-2 w-14 h-14 bg-white p-1 rounded-lg border-2 border-[#131316] shadow-xl rotate-3">
-                          <img src={paymentQRs[provider.id].preview} alt="QR" className="w-full h-full object-contain mix-blend-multiply" />
-                        </div>
-                      )}
+                      {/* Phone Number Input */}
+                      <div className="mt-3 pt-3 border-t border-white/5">
+                        <label className="text-[9px] uppercase text-gray-500 font-mono tracking-wider mb-1.5 block">
+                          Mobile Number (Optional)
+                        </label>
+                        <input
+                          type="tel"
+                          placeholder="e.g. 09171234567"
+                          value={phoneValue}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            setPaymentQRs(prev => ({
+                              ...prev,
+                              [provider.id]: {
+                                ...prev[provider.id],
+                                phoneNumber: e.target.value
+                              }
+                            }))
+                          }}
+                          className="w-full bg-[#0a0a0c] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#dfff4f]/50 font-mono"
+                        />
+                      </div>
                     </div>
                   )
                 })}
@@ -317,7 +350,7 @@ export function OnboardingPage() {
                   onClick={() => setStep('tutorial')}
                   className="flex-1 py-4 bg-[#dfff4f] text-black font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-[#d4f53f] transition-all shadow-[0_0_20px_rgba(223,255,79,0.1)]"
                 >
-                  {hasAnyQR ? 'Continue' : 'Skip for now'} <ArrowRight size={20} />
+                  {hasAnyPaymentInfo ? 'Continue' : 'Skip for now'} <ArrowRight size={20} />
                 </button>
               </div>
             </div>

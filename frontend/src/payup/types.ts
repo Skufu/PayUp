@@ -2,6 +2,7 @@ export type User = {
   id: string
   name: string
   avatar: string
+  avatarUrl?: string
   color: string
   qr: string
   role?: string
@@ -9,6 +10,7 @@ export type User = {
     id: string
     provider: string
     qrUrl: string
+    phoneNumber?: string | null
     isPrimary: boolean
     createdAt: string
   }>

@@ -32,6 +32,7 @@ export function uiUserFromAuth(u: AuthUser): User {
     id: u.id,
     name: display,
     avatar: initials(display),
+    avatarUrl: u.avatarUrl ?? undefined,
     color,
     qr: u.qrUrl ?? '',
   }

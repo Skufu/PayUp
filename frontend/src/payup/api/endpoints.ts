@@ -5,6 +5,7 @@ export type PaymentQR = {
   id: string
   provider: string
   qrUrl: string
+  phoneNumber?: string | null
   isPrimary: boolean
   createdAt: string
 }
@@ -71,10 +72,15 @@ export const api = {
   },
 
   // Payment QR Codes
-  addPaymentQR(provider: string, file: File) {
+  addPaymentQR(provider: string, file?: File, phoneNumber?: string) {
     const form = new FormData()
     form.append('provider', provider)
-    form.append('qr_image', file)
+    if (file) {
+      form.append('qr_image', file)
+    }
+    if (phoneNumber) {
+      form.append('phone_number', phoneNumber)
+    }
     return apiRequest<PaymentQR>(`/v1/auth/payment-qr`, { method: 'POST', body: form })
   },
   listPaymentQRs() {
@@ -85,6 +91,12 @@ export const api = {
   },
   setPrimaryPaymentQR(id: string) {
     return apiRequest<{ message: string }>(`/v1/auth/payment-qr/${encodeURIComponent(id)}/primary`, { method: 'PATCH' })
+  },
+  updatePaymentQRPhone(id: string, phoneNumber: string) {
+    return apiRequest<PaymentQR>(`/v1/auth/payment-qr/${encodeURIComponent(id)}/phone`, {
+      method: 'PATCH',
+      body: JSON.stringify({ phoneNumber }),
+    })
   },
 
   // Groups
@@ -105,8 +117,23 @@ export const api = {
       members: Array<{ userId: string; name?: string; avatarUrl?: string; role: string; joinedAt: string }>
     }>(`/v1/groups/${encodeURIComponent(groupId)}`)
   },
-  createInvite(groupId: string) {
-    return apiRequest<{ code: string; expiresAt?: string }>(`/v1/groups/${encodeURIComponent(groupId)}/invite`, { method: 'POST' })
+  createInvite(groupId: string, options?: { expiresInHours?: number; maxUses?: number }) {
+    return apiRequest<{ code: string; expiresAt?: string; maxUses?: number }>(`/v1/groups/${encodeURIComponent(groupId)}/invite`, {
+      method: 'POST',
+      body: options ? JSON.stringify(options) : undefined,
+    })
+  },
+  getInvitePreview(code: string) {
+    return apiRequest<{
+      groupId: string
+      groupName: string
+      memberCount: number
+      createdByName?: string
+      createdByAvatar?: string
+      expiresAt?: string
+      isValid: boolean
+      invalidReason?: string
+    }>(`/v1/invites/${encodeURIComponent(code)}/preview`)
   },
   joinByCode(code: string) {
     return apiRequest<{ groupId: string }>(`/v1/groups/join/${encodeURIComponent(code)}`, { method: 'POST' })

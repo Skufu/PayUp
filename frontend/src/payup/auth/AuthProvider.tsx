@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { api, type AuthUser } from '../api/endpoints'
+import { api } from '../api/endpoints'
 import { loadTokens, saveTokens, type Tokens } from '../api/client'
 import { uiUserFromAuth } from '../ui/users'
 import { AuthContext, type AuthContextValue, type AuthState } from './_internal/context'
 
 const ONBOARDING_KEY = 'payup_onboarding_complete'
+const FRESH_REGISTRATION_KEY = 'payup_fresh_registration'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading', user: null, tokens: loadTokens(), rawUser: null })
@@ -33,17 +34,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const needsOnboarding = useCallback(() => {
     if (state.status !== 'authed' || !state.rawUser) return false
 
-    // Check if user has already completed onboarding
-    if (localStorage.getItem(ONBOARDING_KEY) === 'true') return false
+    // Only show onboarding if:
+    // 1. User just registered in this session (fresh registration flag is set)
+    // 2. AND they haven't completed onboarding yet
+    const isFreshRegistration = sessionStorage.getItem(FRESH_REGISTRATION_KEY) === 'true'
+    const hasCompletedOnboarding = localStorage.getItem(ONBOARDING_KEY) === 'true'
 
-    const raw = state.rawUser as AuthUser
-
-    // User needs onboarding if:
-    // 1. Name is not set (null/undefined)
-    // 2. Name equals email (not personalized)
-    const hasProperName = raw.name && raw.name !== raw.email
-
-    return !hasProperName
+    return isFreshRegistration && !hasCompletedOnboarding
   }, [state])
 
   const value = useMemo<AuthContextValue>(
@@ -60,14 +57,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await api.googleAuth(idToken)
         const t: Tokens = { accessToken: res.token.accessToken, refreshToken: res.token.refreshToken }
         saveTokens(t)
+        // Check if this is a new user (no payment QRs and recent creation)
+        // For Google login, we consider it a new registration if user has no payment QRs
+        const isNewUser = !res.user.paymentQRs || res.user.paymentQRs.length === 0
+        if (isNewUser) {
+          sessionStorage.setItem(FRESH_REGISTRATION_KEY, 'true')
+        }
         setState({ status: 'authed', user: uiUserFromAuth(res.user), tokens: t, rawUser: res.user })
       },
       async register(email, password, name) {
         const res = await api.register(email, password, name)
         const t: Tokens = { accessToken: res.token.accessToken, refreshToken: res.token.refreshToken }
         saveTokens(t)
-        // Mark onboarding complete for register since they provided name
-        localStorage.setItem(ONBOARDING_KEY, 'true')
+        // Mark as fresh registration so onboarding will be shown
+        sessionStorage.setItem(FRESH_REGISTRATION_KEY, 'true')
         setState({ status: 'authed', user: uiUserFromAuth(res.user), tokens: t, rawUser: res.user })
       },
       async refreshMe() {
@@ -82,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout() {
         saveTokens(null)
         localStorage.removeItem(ONBOARDING_KEY)
+        sessionStorage.removeItem(FRESH_REGISTRATION_KEY)
         setState({ status: 'anon', user: null, tokens: null, rawUser: null })
       },
     }),

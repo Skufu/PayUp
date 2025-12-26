@@ -50,8 +50,9 @@ export function AddExpenseModal({
   })
   const [selectedCategory, setSelectedCategory] = useState<string>('Other')
 
-  // Initialize state when editing
+  // Initialize state when editing - this is intentional to sync state with props
   useLayoutEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (editingExpense) {
       setTitle(editingExpense.title)
       setAmount(String(editingExpense.amount))
@@ -85,6 +86,7 @@ export function AddExpenseModal({
       setSplits(initial)
       setExcludedUsers(new Set())
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [editingExpense, isOpen, activeUsers, initialMode])
 
   const toggleUserExclusion = (uid: string) => {
@@ -119,7 +121,7 @@ export function AddExpenseModal({
     })
   }
 
-  const CATEGORIES = [ // Added CATEGORIES constant
+  const CATEGORIES = [
     { name: 'Food', icon: '🍔' },
     { name: 'Transport', icon: '🚗' },
     { name: 'Shopping', icon: '🛍️' },
@@ -130,7 +132,7 @@ export function AddExpenseModal({
     { name: 'Other', icon: '📦' },
   ]
 
-  const handleSubmit = () => { // Original handleSubmit
+  const handleSubmit = () => {
     const amt = Number(amount)
     if (!amt || amt <= 0) return
 
@@ -157,7 +159,7 @@ export function AddExpenseModal({
       payerId: currentUser.id,
       mode: transactionType === 'transfer' ? 'transfer' : mode,
       type: transactionType,
-      category: selectedCategory, // Added category to onAdd
+      category: selectedCategory,
       splits: finalSplits,
     })
 
@@ -192,15 +194,15 @@ export function AddExpenseModal({
           <div className="bg-[#0a0a0c] p-1.5 rounded-xl flex gap-1 border border-white/5">
             <button
               onClick={() => setTransactionType('expense')}
-              className={`flex - 1 py - 3 rounded - lg text - [10px] font - bold font - mono transition - all uppercase tracking - wide ${transactionType === 'expense' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-white'
-                } `}
+              className={`flex-1 py-3 rounded-lg text-[10px] font-bold font-mono transition-all uppercase tracking-wide ${transactionType === 'expense' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-white'
+                }`}
             >
               Expense
             </button>
             <button
               onClick={() => setTransactionType('transfer')}
-              className={`flex - 1 py - 3 rounded - lg text - [10px] font - bold font - mono transition - all uppercase tracking - wide ${transactionType === 'transfer' ? 'bg-[#ff4f99] text-black shadow-sm' : 'text-gray-500 hover:text-white'
-                } `}
+              className={`flex-1 py-3 rounded-lg text-[10px] font-bold font-mono transition-all uppercase tracking-wide ${transactionType === 'transfer' ? 'bg-[#ff4f99] text-black shadow-sm' : 'text-gray-500 hover:text-white'
+                }`}
             >
               Transfer
             </button>
@@ -229,10 +231,10 @@ export function AddExpenseModal({
                     key={cat.name}
                     type="button"
                     onClick={() => setSelectedCategory(cat.name)}
-                    className={`flex flex - col items - center gap - 1.5 px - 4 py - 3 rounded - 2xl border transition - all min - w - [80px] ${selectedCategory === cat.name
-                        ? 'bg-[#dfff4f] text-black border-[#dfff4f] shadow-lg shadow-[#dfff4f]/10'
-                        : 'bg-[#0a0a0c] border-white/5 text-gray-500 hover:text-white hover:border-white/10'
-                      } `}
+                    className={`flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl border transition-all min-w-[80px] ${selectedCategory === cat.name
+                      ? 'bg-[#dfff4f] text-black border-[#dfff4f] shadow-lg shadow-[#dfff4f]/10'
+                      : 'bg-[#0a0a0c] border-white/5 text-gray-500 hover:text-white hover:border-white/10'
+                      }`}
                   >
                     <span className="text-xl">{cat.icon}</span>
                     <span className="text-[10px] font-bold uppercase tracking-tight">{cat.name}</span>
@@ -252,10 +254,10 @@ export function AddExpenseModal({
                     <button
                       key={u.id}
                       onClick={() => setTransferReceiver(u.id)}
-                      className={`flex items - center gap - 2 px - 4 py - 2 rounded - full border transition - all ${transferReceiver === u.id
-                          ? 'bg-[#ff4f99] text-white border-[#ff4f99]'
-                          : 'bg-transparent border-white/20 text-gray-400'
-                        } `}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all ${transferReceiver === u.id
+                        ? 'bg-[#ff4f99] text-white border-[#ff4f99]'
+                        : 'bg-transparent border-white/20 text-gray-400'
+                        }`}
                     >
                       <div className="w-4 h-4 rounded-full bg-black/20 flex items-center justify-center text-[8px]">
                         {u.avatar}
@@ -273,8 +275,8 @@ export function AddExpenseModal({
             </label>
             <div className="relative group">
               <span
-                className={`absolute left - 0 top - 2 text - 2xl font - mono transition - colors ${amount ? (transactionType === 'transfer' ? 'text-[#ff4f99]' : 'text-[#dfff4f]') : 'text-gray-600'
-                  } `}
+                className={`absolute left-0 top-2 text-2xl font-mono transition-colors ${amount ? (transactionType === 'transfer' ? 'text-[#ff4f99]' : 'text-[#dfff4f]') : 'text-gray-600'
+                  }`}
               >
                 ₱
               </span>
@@ -283,12 +285,12 @@ export function AddExpenseModal({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00"
-                className={`w - full bg - transparent border - b border - white / 10 py - 2 pl - 8 text - 4xl font - mono font - bold focus: outline - none placeholder - white / 5 transition - colors ${transactionType === 'transfer'
-                    ? 'text-[#ff4f99] focus:border-[#ff4f99]'
-                    : mode === 'itemized'
-                      ? 'text-white/30 focus:border-[#dfff4f] focus:text-white'
-                      : 'text-[#dfff4f] focus:border-[#dfff4f]'
-                  } `}
+                className={`w-full bg-transparent border-b border-white/10 py-2 pl-8 text-4xl font-mono font-bold focus:outline-none placeholder-white/5 transition-colors ${transactionType === 'transfer'
+                  ? 'text-[#ff4f99] focus:border-[#ff4f99]'
+                  : mode === 'itemized'
+                    ? 'text-white/30 focus:border-[#dfff4f] focus:text-white'
+                    : 'text-[#dfff4f] focus:border-[#dfff4f]'
+                  }`}
               />
             </div>
           </div>
@@ -298,15 +300,15 @@ export function AddExpenseModal({
               <div className="bg-[#0a0a0c] p-1.5 rounded-xl flex gap-1 border border-white/5">
                 <button
                   onClick={() => setMode('equal')}
-                  className={`flex - 1 py - 3 rounded - lg text - [10px] font - bold font - mono transition - all uppercase tracking - wide ${mode === 'equal' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-white'
-                    } `}
+                  className={`flex-1 py-3 rounded-lg text-[10px] font-bold font-mono transition-all uppercase tracking-wide ${mode === 'equal' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-white'
+                    }`}
                 >
                   Split Equally
                 </button>
                 <button
                   onClick={() => setMode('itemized')}
-                  className={`flex - 1 py - 3 rounded - lg text - [10px] font - bold font - mono transition - all uppercase tracking - wide ${mode === 'itemized' ? 'bg-[#dfff4f] text-black shadow-sm' : 'text-gray-500 hover:text-white'
-                    } `}
+                  className={`flex-1 py-3 rounded-lg text-[10px] font-bold font-mono transition-all uppercase tracking-wide ${mode === 'itemized' ? 'bg-[#dfff4f] text-black shadow-sm' : 'text-gray-500 hover:text-white'
+                    }`}
                 >
                   Hybrid Split
                 </button>
@@ -329,14 +331,14 @@ export function AddExpenseModal({
                         <button
                           key={u.id}
                           onClick={() => toggleUserExclusion(u.id)}
-                          className={`flex items - center gap - 2 px - 3 py - 1.5 rounded - full border transition - all ${!isExcluded
-                              ? 'bg-[#dfff4f]/10 border-[#dfff4f] text-[#dfff4f]'
-                              : 'bg-transparent border-white/10 text-gray-500'
-                            } `}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${!isExcluded
+                            ? 'bg-[#dfff4f]/10 border-[#dfff4f] text-[#dfff4f]'
+                            : 'bg-transparent border-white/10 text-gray-500'
+                            }`}
                         >
                           <div
-                            className={`w - 5 h - 5 rounded - full ${u.color} flex items - center justify - center text - [10px] font - bold text - black ${isExcluded ? 'opacity-40 grayscale' : ''
-                              } `}
+                            className={`w-5 h-5 rounded-full ${u.color} flex items-center justify-center text-[10px] font-bold text-black ${isExcluded ? 'opacity-40 grayscale' : ''
+                              }`}
                           >
                             {u.avatar}
                           </div>
@@ -358,12 +360,12 @@ export function AddExpenseModal({
                     return (
                       <div key={u.id} className="flex items-center gap-3 py-1">
                         <div
-                          className={`w - 8 h - 8 rounded - full ${u.color} flex items - center justify - center text - xs font - bold text - black shadow - sm transition - all ${isActive ? 'ring-2 ring-[#dfff4f] scale-110' : 'opacity-70'
-                            } `}
+                          className={`w-8 h-8 rounded-full ${u.color} flex items-center justify-center text-xs font-bold text-black shadow-sm transition-all ${isActive ? 'ring-2 ring-[#dfff4f] scale-110' : 'opacity-70'
+                            }`}
                         >
                           {u.avatar}
                         </div>
-                        <span className={`flex - 1 text - sm font - medium transition - colors ${isActive ? 'text-[#dfff4f]' : 'text-white'} `}>
+                        <span className={`flex-1 text-sm font-medium transition-colors ${isActive ? 'text-[#dfff4f]' : 'text-white'}`}>
                           {u.name}
                         </span>
                         <input
@@ -371,15 +373,15 @@ export function AddExpenseModal({
                           placeholder="0"
                           value={splits[u.id] === 0 ? '' : splits[u.id]}
                           onChange={(e) => handleItemizedChange(u.id, e.target.value)}
-                          className={`w - 28 bg - [#1c1c21] border rounded - lg px - 3 py - 2 text - right font - mono text - lg text - white focus: outline - none transition - all placeholder - white / 10 ${isActive ? 'border-[#dfff4f] bg-[#dfff4f]/10' : 'border-white/20 focus:border-[#dfff4f]'
-                            } `}
+                          className={`w-28 bg-[#1c1c21] border rounded-lg px-3 py-2 text-right font-mono text-lg text-white focus:outline-none transition-all placeholder-white/10 ${isActive ? 'border-[#dfff4f] bg-[#dfff4f]/10' : 'border-white/20 focus:border-[#dfff4f]'
+                            }`}
                         />
                       </div>
                     )
                   })}
                   <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
                     <span className="text-[10px] text-gray-500 uppercase tracking-wider">Shared Remainder</span>
-                    <span className={`font - mono font - bold ${remainder < 0 ? 'text-red-500' : 'text-white'} `}>
+                    <span className={`font-mono font-bold ${remainder < 0 ? 'text-red-500' : 'text-white'}`}>
                       {remainder.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
                     </span>
                   </div>
@@ -393,8 +395,8 @@ export function AddExpenseModal({
           <button
             onClick={handleSubmit}
             disabled={(!title && transactionType === 'expense') || !amount}
-            className={`w - full text - black font - bold font - mono py - 4 rounded - xl text - lg transition - all flex items - center justify - center gap - 2 acid - border shadow - lg ${transactionType === 'transfer' ? 'bg-[#ff4f99] hover:bg-[#ff7eb6]' : 'bg-[#dfff4f] hover:bg-[#ccee3e]'
-              } disabled: opacity - 50 disabled: cursor - not - allowed`}
+            className={`w-full text-black font-bold font-mono py-4 rounded-xl text-lg transition-all flex items-center justify-center gap-2 shadow-lg ${transactionType === 'transfer' ? 'bg-[#ff4f99] hover:bg-[#ff7eb6] pink-border' : 'bg-[#dfff4f] hover:bg-[#ccee3e] acid-border'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {editingExpense
               ? 'UPDATE EXPENSE'
@@ -406,4 +408,3 @@ export function AddExpenseModal({
     </div>
   )
 }
-

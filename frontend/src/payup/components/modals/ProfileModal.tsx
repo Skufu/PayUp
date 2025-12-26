@@ -1,4 +1,4 @@
-import { AlertCircle, Camera, CheckCircle, QrCode, X, Trash2, Check } from 'lucide-react'
+import { AlertCircle, Camera, CheckCircle, Copy, QrCode, X, Trash2, Check } from 'lucide-react'
 import { useRef, useState, useEffect } from 'react'
 
 import { api, type PaymentQR } from '../../api/endpoints'
@@ -16,11 +16,21 @@ type Props = {
 export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: Props) {
   const [name, setName] = useState(currentUser.name)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
-  const [avatarPreview, setAvatarPreview] = useState<string>('')
+  const [avatarPreview, setAvatarPreview] = useState<string>(currentUser.avatarUrl ?? '')
 
   // Payment QRs state
   const [userQRs, setUserQRs] = useState<PaymentQR[]>(currentUser.paymentQRs || [])
   const [uploadingQR, setUploadingQR] = useState<string | null>(null)
+  // Phone number inputs per provider
+  const [phoneNumbers, setPhoneNumbers] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {}
+    currentUser.paymentQRs?.forEach(qr => {
+      if (qr.phoneNumber) initial[qr.provider] = qr.phoneNumber
+    })
+    return initial
+  })
+  const [editingPhone, setEditingPhone] = useState<string | null>(null)
+  const [copiedPhone, setCopiedPhone] = useState<string | null>(null)
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -33,6 +43,12 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
   useEffect(() => {
     if (currentUser.paymentQRs) {
       setUserQRs(currentUser.paymentQRs)
+      // Also sync phone numbers
+      const updated: Record<string, string> = {}
+      currentUser.paymentQRs.forEach(qr => {
+        if (qr.phoneNumber) updated[qr.provider] = qr.phoneNumber
+      })
+      setPhoneNumbers(updated)
     }
   }, [currentUser.paymentQRs])
 
@@ -54,7 +70,8 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
 
     try {
       setSaving(true)
-      const newQR = await api.addPaymentQR(uploadingQR, file)
+      const phoneNumber = phoneNumbers[uploadingQR]
+      const newQR = await api.addPaymentQR(uploadingQR, file, phoneNumber || undefined)
       setUserQRs(prev => [...prev.filter(q => q.provider !== uploadingQR), newQR])
       setSuccess(true)
       setTimeout(() => setSuccess(false), 2000)
@@ -63,6 +80,16 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
     } finally {
       setSaving(false)
       setUploadingQR(null)
+    }
+  }
+
+  const handleCopyPhone = async (provider: string, phone: string) => {
+    try {
+      await navigator.clipboard.writeText(phone)
+      setCopiedPhone(provider)
+      setTimeout(() => setCopiedPhone(null), 2000)
+    } catch {
+      setError('Failed to copy')
     }
   }
 
@@ -150,56 +177,106 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
             <div className="grid grid-cols-1 gap-2">
               {PAYMENT_PROVIDERS.map(provider => {
                 const qr = userQRs.find(q => q.provider === provider.id)
+                const isEditingPhone = editingPhone === provider.id
                 return (
-                  <div key={provider.id} className="bg-[#1c1c21] border border-white/5 rounded-2xl p-3 flex items-center gap-3 group relative">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
-                      style={{ backgroundColor: provider.lightColor }}
-                    >
-                      {provider.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold flex items-center gap-2">
-                        {provider.name}
-                        {qr?.isPrimary && <span className="text-[8px] bg-[#dfff4f] text-black px-1.5 py-0.5 rounded font-mono uppercase tracking-tighter">Primary</span>}
+                  <div key={provider.id} className="bg-[#1c1c21] border border-white/5 rounded-2xl p-3 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
+                        style={{ backgroundColor: provider.lightColor }}
+                      >
+                        {provider.icon}
                       </div>
-                      <div className="text-[10px] text-gray-500 truncate">
-                        {qr ? 'QR Uploaded' : 'Not set up'}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold flex items-center gap-2">
+                          {provider.name}
+                          {qr?.isPrimary && <span className="text-[8px] bg-[#dfff4f] text-black px-1.5 py-0.5 rounded font-mono uppercase tracking-tighter">Primary</span>}
+                        </div>
+                        <div className="text-[10px] text-gray-500 truncate">
+                          {qr ? 'QR Uploaded' : 'Not set up'}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {qr ? (
+                          <>
+                            {!qr.isPrimary && (
+                              <button
+                                onClick={() => handleSetPrimary(qr.id)}
+                                className="p-1.5 text-gray-500 hover:text-[#dfff4f] transition-colors"
+                                title="Set as primary"
+                              >
+                                <Check size={16} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteQR(qr.id)}
+                              className="p-1.5 text-gray-500 hover:text-red-500 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setUploadingQR(provider.id)
+                              qrInputRef.current?.click()
+                            }}
+                            className="text-[10px] font-bold text-[#dfff4f] uppercase tracking-widest px-3 py-1.5 bg-[#dfff4f]/10 rounded-lg hover:bg-[#dfff4f]/20 transition-colors"
+                          >
+                            Upload
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      {qr ? (
-                        <>
-                          {!qr.isPrimary && (
+                    {/* Phone Number Section - only show if QR is uploaded */}
+                    {qr && (
+                      <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+                        {isEditingPhone ? (
+                          <>
+                            <input
+                              type="tel"
+                              placeholder="e.g. 09171234567"
+                              value={phoneNumbers[provider.id] || ''}
+                              onChange={(e) => setPhoneNumbers(prev => ({ ...prev, [provider.id]: e.target.value }))}
+                              className="flex-1 bg-[#0a0a0c] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#dfff4f]/50"
+                            />
                             <button
-                              onClick={() => handleSetPrimary(qr.id)}
-                              className="p-1.5 text-gray-500 hover:text-[#dfff4f] transition-colors"
-                              title="Set as primary"
+                              onClick={() => setEditingPhone(null)}
+                              className="p-1.5 text-[#dfff4f] hover:bg-[#dfff4f]/10 rounded-lg transition-colors"
                             >
-                              <Check size={16} />
+                              <Check size={14} />
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleDeleteQR(qr.id)}
-                            className="p-1.5 text-gray-500 hover:text-red-500 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setUploadingQR(provider.id)
-                            qrInputRef.current?.click()
-                          }}
-                          className="text-[10px] font-bold text-[#dfff4f] uppercase tracking-widest px-3 py-1.5 bg-[#dfff4f]/10 rounded-lg hover:bg-[#dfff4f]/20 transition-colors"
-                        >
-                          Upload
-                        </button>
-                      )}
-                    </div>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-[10px] text-gray-500 uppercase tracking-wider">Mobile:</span>
+                            {phoneNumbers[provider.id] || qr.phoneNumber ? (
+                              <>
+                                <span className="text-sm text-white font-mono">{phoneNumbers[provider.id] || qr.phoneNumber}</span>
+                                <button
+                                  onClick={() => handleCopyPhone(provider.id, phoneNumbers[provider.id] || qr.phoneNumber || '')}
+                                  className="p-1 text-gray-500 hover:text-[#dfff4f] transition-colors"
+                                  title="Copy number"
+                                >
+                                  {copiedPhone === provider.id ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-xs text-gray-600 italic">Not set</span>
+                            )}
+                            <button
+                              onClick={() => setEditingPhone(provider.id)}
+                              className="ml-auto text-[9px] text-gray-500 hover:text-white uppercase tracking-wider transition-colors"
+                            >
+                              Edit
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -241,6 +318,15 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
               setSuccess(false)
               setSaving(true)
               try {
+                // Save phone numbers for each QR that has changed
+                for (const qr of userQRs) {
+                  const newPhone = phoneNumbers[qr.provider]
+                  const oldPhone = qr.phoneNumber || ''
+                  if (newPhone !== undefined && newPhone !== oldPhone) {
+                    await api.updatePaymentQRPhone(qr.id, newPhone)
+                  }
+                }
+                // Save name and avatar
                 await api.updateProfile(name, undefined, avatarFile ?? undefined)
                 await onUpdateProfile()
                 setSuccess(true)
