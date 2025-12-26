@@ -84,6 +84,23 @@ func (q *Queries) GetGroup(ctx context.Context, id pgtype.UUID) (GetGroupRow, er
 	return i, err
 }
 
+const getMemberRole = `-- name: GetMemberRole :one
+SELECT role FROM group_members
+WHERE group_id = $1 AND user_id = $2
+`
+
+type GetMemberRoleParams struct {
+	GroupID pgtype.UUID `json:"group_id"`
+	UserID  pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (string, error) {
+	row := q.db.QueryRow(ctx, getMemberRole, arg.GroupID, arg.UserID)
+	var role string
+	err := row.Scan(&role)
+	return role, err
+}
+
 const isGroupMember = `-- name: IsGroupMember :one
 SELECT EXISTS (
   SELECT 1 FROM group_members
@@ -101,6 +118,21 @@ func (q *Queries) IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (b
 	var is_member bool
 	err := row.Scan(&is_member)
 	return is_member, err
+}
+
+const leaveGroup = `-- name: LeaveGroup :exec
+DELETE FROM group_members
+WHERE group_id = $1 AND user_id = $2
+`
+
+type LeaveGroupParams struct {
+	GroupID pgtype.UUID `json:"group_id"`
+	UserID  pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) LeaveGroup(ctx context.Context, arg LeaveGroupParams) error {
+	_, err := q.db.Exec(ctx, leaveGroup, arg.GroupID, arg.UserID)
+	return err
 }
 
 const listGroupMembers = `-- name: ListGroupMembers :many
@@ -154,7 +186,11 @@ func (q *Queries) ListGroupMembers(ctx context.Context, groupID pgtype.UUID) ([]
 }
 
 const listGroupsForUser = `-- name: ListGroupsForUser :many
-SELECT g.id, g.name, g.created_at
+SELECT
+  g.id,
+  g.name,
+  g.created_at,
+  (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) AS member_count
 FROM groups g
 JOIN group_members gm ON gm.group_id = g.id
 WHERE gm.user_id = $1
@@ -162,9 +198,10 @@ ORDER BY g.created_at DESC
 `
 
 type ListGroupsForUserRow struct {
-	ID        pgtype.UUID        `json:"id"`
-	Name      string             `json:"name"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID          pgtype.UUID        `json:"id"`
+	Name        string             `json:"name"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	MemberCount int64              `json:"member_count"`
 }
 
 func (q *Queries) ListGroupsForUser(ctx context.Context, userID pgtype.UUID) ([]ListGroupsForUserRow, error) {
@@ -176,7 +213,12 @@ func (q *Queries) ListGroupsForUser(ctx context.Context, userID pgtype.UUID) ([]
 	var items []ListGroupsForUserRow
 	for rows.Next() {
 		var i ListGroupsForUserRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.MemberCount,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -10,9 +10,7 @@ vendor/
 .env.*
 
 # Docs (temporarily not committing)
-plan.md
-PayUp_prototype.md
-PayUp.md
+# Files moved to docs/
 frontend/README.md
 
 # Build outputs
@@ -133,5 +131,3 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
-
-.md

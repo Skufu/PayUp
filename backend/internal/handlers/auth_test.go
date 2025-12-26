@@ -27,12 +27,26 @@ func (s stubDBTX) Exec(ctx context.Context, sql string, args ...interface{}) (pg
 }
 
 func (s stubDBTX) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
-	return nil, nil
+	// Return empty rows implementation to avoid nil panics
+	return &stubRows{}, nil
 }
 
 func (s stubDBTX) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
 	return s.queryRow(ctx, sql, args...)
 }
+
+// stubRows implements pgx.Rows but returns no data
+type stubRows struct{}
+
+func (r *stubRows) Close()                                         {}
+func (r *stubRows) Err() error                                     { return nil }
+func (r *stubRows) CommandTag() pgconn.CommandTag                  { return pgconn.CommandTag{} }
+func (r *stubRows) FieldDescriptions() []pgconn.FieldDescription   { return nil }
+func (r *stubRows) Next() bool                                     { return false }
+func (r *stubRows) Scan(dest ...any) error                         { return nil }
+func (r *stubRows) Values() ([]any, error)                         { return nil, nil }
+func (r *stubRows) RawValues() [][]byte                            { return nil }
+func (r *stubRows) Conn() *pgx.Conn                                { return nil }
 
 type stubRow struct {
 	scan func(dest ...any) error

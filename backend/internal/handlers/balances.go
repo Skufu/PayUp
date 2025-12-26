@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Skufu/PayUp/internal/auth"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
+	"github.com/Skufu/PayUp/internal/util"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -18,14 +18,8 @@ type BalancesHandler struct {
 }
 
 func (h *BalancesHandler) GetByGroup(c *gin.Context) {
-	uidStr, ok := c.Get(auth.CtxUserIDKey)
+	uid, ok := util.MustUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	uid, err := uuid.Parse(uidStr.(string))
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 

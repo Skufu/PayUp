@@ -29,6 +29,11 @@ func StructuredLogger() gin.HandlerFunc {
 
 		fields := logger.Fields{}
 
+		// Add request ID for tracing
+		if requestID := GetRequestID(c); requestID != "" {
+			fields["request_id"] = requestID
+		}
+
 		// Log errors if any
 		if len(c.Errors) > 0 {
 			fields["errors"] = c.Errors.String()

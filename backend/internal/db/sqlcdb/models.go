@@ -54,6 +54,16 @@ func (ns NullPaymentStatus) Value() (driver.Value, error) {
 	return string(ns.PaymentStatus), nil
 }
 
+type ActivityLog struct {
+	ID           pgtype.UUID        `json:"id"`
+	GroupID      pgtype.UUID        `json:"group_id"`
+	UserID       pgtype.UUID        `json:"user_id"`
+	ActivityType string             `json:"activity_type"`
+	Description  string             `json:"description"`
+	Metadata     []byte             `json:"metadata"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
 type Expense struct {
 	ID        pgtype.UUID        `json:"id"`
 	GroupID   pgtype.UUID        `json:"group_id"`
@@ -62,6 +72,7 @@ type Expense struct {
 	PayerID   pgtype.UUID        `json:"payer_id"`
 	Mode      *string            `json:"mode"`
 	Type      *string            `json:"type"`
+	Category  *string            `json:"category"`
 	CreatedBy pgtype.UUID        `json:"created_by"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
@@ -131,6 +142,16 @@ type Payment struct {
 	DecidedAt  pgtype.Timestamptz `json:"decided_at"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+}
+
+type PaymentQrCode struct {
+	ID        pgtype.UUID        `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Provider  string             `json:"provider"`
+	QrUrl     string             `json:"qr_url"`
+	IsPrimary bool               `json:"is_primary"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type PushSubscription struct {

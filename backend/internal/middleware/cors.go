@@ -1,11 +1,11 @@
 package middleware
 
 import (
-	"log"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/Skufu/PayUp/internal/logger"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -25,7 +25,7 @@ func CORS() gin.HandlerFunc {
 
 	if len(origins) == 0 {
 		if isProduction {
-			log.Println("[SECURITY WARNING] CORS_ORIGINS not set in production! Defaulting to strict mode (no origins allowed)")
+			logger.Warn("CORS_ORIGINS not set in production, defaulting to strict mode", logger.Fields{"security": true})
 			origins = []string{} // No origins allowed if not explicitly set in production
 		} else {
 			// Dev defaults.
@@ -37,7 +37,7 @@ func CORS() gin.HandlerFunc {
 	if isProduction {
 		for _, o := range origins {
 			if o == "*" {
-				log.Println("[SECURITY ERROR] Wildcard CORS origin '*' is not allowed in production!")
+				logger.Error("wildcard CORS origin not allowed in production", logger.Fields{"security": true})
 				origins = []string{} // Reject all if wildcard is set
 				break
 			}

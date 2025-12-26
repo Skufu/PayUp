@@ -42,14 +42,23 @@ type refreshRequest struct {
 	RefreshToken string `json:"refreshToken"`
 }
 
-type userResponse struct {
+type paymentQRResponse struct {
 	ID        string    `json:"id"`
-	Email     string    `json:"email"`
-	Name      *string   `json:"name,omitempty"`
-	AvatarURL *string   `json:"avatarUrl,omitempty"`
-	QRURL     *string   `json:"qrUrl,omitempty"`
+	Provider  string    `json:"provider"`
+	QRURL     string    `json:"qrUrl"`
+	IsPrimary bool      `json:"isPrimary"`
 	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type userResponse struct {
+	ID         string               `json:"id"`
+	Email      string               `json:"email"`
+	Name       *string              `json:"name,omitempty"`
+	AvatarURL  *string              `json:"avatarUrl,omitempty"`
+	QRURL      *string              `json:"qrUrl,omitempty"` // Legacy field
+	PaymentQRs []paymentQRResponse  `json:"paymentQRs,omitempty"`
+	CreatedAt  time.Time            `json:"createdAt"`
+	UpdatedAt  time.Time            `json:"updatedAt"`
 }
 
 type authResponse struct {
@@ -112,18 +121,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	createdAt, _ := sqlcutil.Time(row.CreatedAt)
-	updatedAt, _ := sqlcutil.Time(row.UpdatedAt)
 	c.JSON(http.StatusCreated, authResponse{
-		User: userResponse{
-			ID:        idStr,
+		User: h.toUserResponse(ctx, sqlcdb.GetUserByIDRow{
+			ID:        row.ID,
 			Email:     row.Email,
 			Name:      row.Name,
-			AvatarURL: row.AvatarUrl,
-			QRURL:     row.QrUrl,
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
-		},
+			AvatarUrl: row.AvatarUrl,
+			QrUrl:     row.QrUrl,
+			CreatedAt: row.CreatedAt,
+			UpdatedAt: row.UpdatedAt,
+		}),
 		Token: tokens,
 	})
 }
@@ -172,18 +179,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	createdAt, _ := sqlcutil.Time(u.CreatedAt)
-	updatedAt, _ := sqlcutil.Time(u.UpdatedAt)
 	c.JSON(http.StatusOK, authResponse{
-		User: userResponse{
-			ID:        idStr,
+		User: h.toUserResponse(ctx, sqlcdb.GetUserByIDRow{
+			ID:        u.ID,
 			Email:     u.Email,
 			Name:      u.Name,
-			AvatarURL: u.AvatarUrl,
-			QRURL:     u.QrUrl,
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
-		},
+			AvatarUrl: u.AvatarUrl,
+			QrUrl:     u.QrUrl,
+			CreatedAt: u.CreatedAt,
+			UpdatedAt: u.UpdatedAt,
+		}),
 		Token: tokens,
 	})
 }
@@ -236,17 +241,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		return
 	}
 
-	createdAt, _ := sqlcutil.Time(u.CreatedAt)
-	updatedAt, _ := sqlcutil.Time(u.UpdatedAt)
-	c.JSON(http.StatusOK, userResponse{
-		ID:        uid.String(),
-		Email:     u.Email,
-		Name:      u.Name,
-		AvatarURL: u.AvatarUrl,
-		QRURL:     u.QrUrl,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
-	})
+	c.JSON(http.StatusOK, h.toUserResponse(ctx, u))
 }
 
 func (h *AuthHandler) UpdateProfile(c *gin.Context) {
@@ -481,18 +476,8 @@ func (h *AuthHandler) GoogleAuth(c *gin.Context) {
 		return
 	}
 
-	createdAt, _ := sqlcutil.Time(user.CreatedAt)
-	updatedAt, _ := sqlcutil.Time(user.UpdatedAt)
 	c.JSON(http.StatusOK, authResponse{
-		User: userResponse{
-			ID:        userID,
-			Email:     user.Email,
-			Name:      user.Name,
-			AvatarURL: user.AvatarUrl,
-			QRURL:     user.QrUrl,
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
-		},
+		User:  h.toUserResponse(ctx, user),
 		Token: tokens,
 	})
 }
@@ -597,4 +582,186 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "password reset successfully"})
+}
+
+func (h *AuthHandler) toUserResponse(ctx context.Context, u sqlcdb.GetUserByIDRow) userResponse {
+	createdAt, _ := sqlcutil.Time(u.CreatedAt)
+	updatedAt, _ := sqlcutil.Time(u.UpdatedAt)
+
+	res := userResponse{
+		ID:        sqlcutil.UUIDToString(u.ID),
+		Email:     u.Email,
+		Name:      u.Name,
+		AvatarURL: u.AvatarUrl,
+		QRURL:     u.QrUrl,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+	}
+
+	qrs, err := h.Q.GetPaymentQRsByUser(ctx, u.ID)
+	if err == nil {
+		for _, qr := range qrs {
+			ct, _ := sqlcutil.Time(qr.CreatedAt)
+			res.PaymentQRs = append(res.PaymentQRs, paymentQRResponse{
+				ID:        sqlcutil.UUIDToString(qr.ID),
+				Provider:  qr.Provider,
+				QRURL:     qr.QrUrl,
+				IsPrimary: qr.IsPrimary,
+				CreatedAt: ct,
+			})
+		}
+	}
+
+	return res
+}
+
+func (h *AuthHandler) ListPaymentQRs(c *gin.Context) {
+	uid, ok := mustUserID(c)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	qrs, err := h.Q.GetPaymentQRsByUser(ctx, sqlcutil.UUID(uid))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch payment QRs"})
+		return
+	}
+
+	res := make([]paymentQRResponse, 0, len(qrs))
+	for _, qr := range qrs {
+		ct, _ := sqlcutil.Time(qr.CreatedAt)
+		res = append(res, paymentQRResponse{
+			ID:        sqlcutil.UUIDToString(qr.ID),
+			Provider:  qr.Provider,
+			QRURL:     qr.QrUrl,
+			IsPrimary: qr.IsPrimary,
+			CreatedAt: ct,
+		})
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func (h *AuthHandler) AddPaymentQR(c *gin.Context) {
+	uid, ok := mustUserID(c)
+	if !ok {
+		return
+	}
+
+	provider := strings.TrimSpace(c.PostForm("provider"))
+	if provider == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "provider is required"})
+		return
+	}
+
+	file, header, err := c.Request.FormFile("qr_image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "qr_image is required"})
+		return
+	}
+	defer file.Close()
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	defer cancel()
+
+	if h.UploadService == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "upload service not available"})
+		return
+	}
+
+	// Upload QR image
+	url, err := h.UploadService.UploadPaymentQR(ctx, file, header, uid.String())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("upload failed: %v", err)})
+		return
+	}
+
+	// Check if this is the first QR, if so make it primary
+	existing, _ := h.Q.GetPaymentQRsByUser(ctx, sqlcutil.UUID(uid))
+	isPrimary := len(existing) == 0
+
+	qr, err := h.Q.CreatePaymentQR(ctx, sqlcdb.CreatePaymentQRParams{
+		UserID:    sqlcutil.UUID(uid),
+		Provider:  provider,
+		QrUrl:     url,
+		IsPrimary: isPrimary,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save payment QR"})
+		return
+	}
+
+	ct, _ := sqlcutil.Time(qr.CreatedAt)
+	c.JSON(http.StatusCreated, paymentQRResponse{
+		ID:        sqlcutil.UUIDToString(qr.ID),
+		Provider:  qr.Provider,
+		QRURL:     qr.QrUrl,
+		IsPrimary: qr.IsPrimary,
+		CreatedAt: ct,
+	})
+}
+
+func (h *AuthHandler) DeletePaymentQR(c *gin.Context) {
+	uid, ok := mustUserID(c)
+	if !ok {
+		return
+	}
+
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	err = h.Q.DeletePaymentQR(ctx, sqlcdb.DeletePaymentQRParams{
+		ID:     sqlcutil.UUID(id),
+		UserID: sqlcutil.UUID(uid),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete payment QR"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "payment QR deleted"})
+}
+
+func (h *AuthHandler) SetPrimaryPaymentQR(c *gin.Context) {
+	uid, ok := mustUserID(c)
+	if !ok {
+		return
+	}
+
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	// Unset existing primaries
+	err = h.Q.UnsetPrimaryPaymentQRs(ctx, sqlcutil.UUID(uid))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update primary status"})
+		return
+	}
+
+	// Set new primary
+	err = h.Q.SetPrimaryPaymentQR(ctx, sqlcdb.SetPrimaryPaymentQRParams{
+		ID:     sqlcutil.UUID(id),
+		UserID: sqlcutil.UUID(uid),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to set primary payment QR"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "primary payment QR updated"})
 }

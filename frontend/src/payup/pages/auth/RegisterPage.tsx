@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Icon } from '@iconify/react'
+import { AlertCircle, ArrowRight, Loader2, Lock, Mail, User } from 'lucide-react'
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 
 import type { ApiError } from '../../api/client'
@@ -18,7 +18,7 @@ export function RegisterPage() {
   const [password, setPassword] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  
+
   // PWA Guide state
   const shouldShowPWAGuide = useShouldShowPWAGuide()
   const [showingPWAGuide, setShowingPWAGuide] = useState(true)
@@ -68,7 +68,7 @@ export function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-[#050507] text-[#f0f0f0] flex items-center justify-center px-4 font-mono relative overflow-hidden">
-      
+
       {/* Background Ambience */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#dfff4f]/5 rounded-full blur-[120px]" />
@@ -76,7 +76,7 @@ export function RegisterPage() {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
@@ -90,12 +90,12 @@ export function RegisterPage() {
         </div>
 
         {err && (
-          <motion.div 
+          <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             className="bg-[#ff4f99]/10 border border-[#ff4f99]/20 rounded-xl p-3 mb-6 flex items-start gap-3 text-sm text-[#ff4f99]"
           >
-            <Icon icon="lucide:alert-circle" className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             {err}
           </motion.div>
         )}
@@ -111,7 +111,7 @@ export function RegisterPage() {
                 placeholder="How should we call you?"
                 required
               />
-              <Icon icon="lucide:user" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 group-focus-within:text-[#dfff4f] transition-colors" />
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 group-focus-within:text-[#dfff4f] transition-colors" />
             </div>
           </div>
 
@@ -127,7 +127,7 @@ export function RegisterPage() {
                 placeholder="you@example.com"
                 required
               />
-              <Icon icon="lucide:mail" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 group-focus-within:text-[#dfff4f] transition-colors" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 group-focus-within:text-[#dfff4f] transition-colors" />
             </div>
           </div>
 
@@ -144,7 +144,7 @@ export function RegisterPage() {
                 minLength={8}
                 required
               />
-              <Icon icon="lucide:lock" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 group-focus-within:text-[#dfff4f] transition-colors" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 group-focus-within:text-[#dfff4f] transition-colors" />
             </div>
           </div>
 
@@ -154,13 +154,13 @@ export function RegisterPage() {
           >
             {busy ? (
               <>
-                <Icon icon="eos-icons:loading" className="w-5 h-5" />
+                <Loader2 className="w-5 h-5 animate-spin" />
                 Creating Account...
               </>
             ) : (
               <>
                 Start for Free
-                <Icon icon="lucide:arrow-right" className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </>
             )}
           </button>
@@ -194,7 +194,7 @@ export function RegisterPage() {
               className="w-full bg-white/5 border border-white/10 text-white/60 font-bold text-xs uppercase tracking-widest py-4 rounded-xl flex items-center justify-center gap-3 cursor-not-allowed"
               title="Coming soon"
             >
-              <Icon icon="logos:facebook" className="w-5 h-5" />
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
               Continue with Facebook (soon)
             </button>
           </div>

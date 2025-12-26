@@ -1,0 +1,38 @@
+# UI Alignment and Functionality Improvements
+
+Fix the alignment of the "Pending" badge and make the "Members" count dynamic in the group list.
+
+## Proposed Changes
+
+### [Backend]
+
+#### [MODIFY] [groups.sql](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/sql/queries/groups.sql)
+- Update `ListGroupsForUser` to include `member_count`.
+
+#### [MODIFY] [groups.go](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/groups.go)
+- Update [groupResponse](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/groups.go#31-36) struct to include `MemberCount`.
+- Populate `MemberCount` in the [List](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/groups.go#57-84) handler.
+
+### [Frontend]
+
+#### [MODIFY] [types.ts](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/types.ts)
+- Add `memberCount?: number` to the [Group](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/types.ts#9-15) type.
+
+#### [MODIFY] [endpoints.ts](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/api/endpoints.ts)
+- Update [listGroups](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/api/endpoints.ts#64-68) return type to include `memberCount`.
+
+#### [MODIFY] [PayUpApp.tsx](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/PayUpApp.tsx)
+- Map `memberCount` from API response to the group list.
+
+#### [MODIFY] [SideMenu.tsx](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/components/modals/SideMenu.tsx)
+- Use `group.memberCount` for displaying the number of members.
+
+#### [MODIFY] [WalletView.tsx](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/components/WalletView.tsx)
+- Fix vertical alignment of the "Pending" badge by adding `items-baseline` or adjusting padding.
+
+
+## Verification Plan
+
+### Manual Verification
+- Check the "Pending" badge alignment in the wallet view.
+- Verify that the group list in the side menu shows the correct number of members for each group.

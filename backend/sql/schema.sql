@@ -46,6 +46,7 @@ CREATE TABLE expenses (
   payer_id   uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   mode       text,
   type       text,
+  category   text,
   created_by uuid REFERENCES users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
@@ -115,4 +116,28 @@ CREATE TABLE oauth_accounts (
   created_at  timestamptz NOT NULL DEFAULT now(),
   UNIQUE (provider, provider_id)
 );
+
+CREATE TABLE payment_qr_codes (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider   text NOT NULL, -- 'gcash', 'maya', etc.
+  qr_url     text NOT NULL,
+  is_primary boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, provider)
+);
+
+CREATE TABLE activity_log (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id      uuid NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  user_id       uuid NOT NULL REFERENCES users(id),
+  activity_type text NOT NULL,
+  description   text NOT NULL,
+  metadata      jsonb DEFAULT '{}',
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_activity_log_group_id ON activity_log(group_id);
+CREATE INDEX idx_activity_log_created_at ON activity_log(created_at DESC);
 

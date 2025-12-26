@@ -2,14 +2,16 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/Skufu/PayUp/internal/auth"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
+	"github.com/Skufu/PayUp/internal/logger"
 	"github.com/Skufu/PayUp/internal/services"
+	"github.com/Skufu/PayUp/internal/util"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -30,14 +32,8 @@ type createPaymentRequest struct {
 }
 
 func (h *PaymentsHandler) Create(c *gin.Context) {
-	uidStr, ok := c.Get(auth.CtxUserIDKey)
+	senderID, ok := util.MustUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	senderID, err := uuid.Parse(uidStr.(string))
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
@@ -69,6 +65,7 @@ func (h *PaymentsHandler) Create(c *gin.Context) {
 	// Validate both are members of the group.
 	memberSet, err := groupMemberSet(ctx, h.Q, gid)
 	if err != nil {
+		logger.DBError("groupMemberSet", err, logger.Fields{"group_id": groupID.String()})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create payment"})
 		return
 	}
@@ -77,8 +74,8 @@ func (h *PaymentsHandler) Create(c *gin.Context) {
 		return
 	}
 
-	amountCents := moneyToCents(req.Amount)
-	proof := strings.TrimSpace(deref(req.ProofURL))
+	amountCents := util.MoneyToCents(req.Amount)
+	proof := strings.TrimSpace(util.Deref(req.ProofURL))
 	var proofPtr *string
 	if proof != "" {
 		proofPtr = &proof
@@ -88,35 +85,34 @@ func (h *PaymentsHandler) Create(c *gin.Context) {
 		GroupID:    gid,
 		SenderID:   sqlcutil.UUID(senderID),
 		ReceiverID: sqlcutil.UUID(receiverID),
-		Amount:     centsToMoneyString(amountCents),
+		Amount:     util.CentsToMoneyString(amountCents),
 		ProofUrl:   proofPtr,
 	})
 	if err != nil {
+		logger.DBError("CreatePayment", err, logger.Fields{"group_id": groupID.String()})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create payment"})
 		return
 	}
 
 	createdAt, _ := sqlcutil.Time(created.CreatedAt)
+
+	// Log activity
+	_ = LogActivity(ctx, h.Q, gid, senderID, "payment_created", fmt.Sprintf("A payment of %.2f was recorded", util.CentsToFloat(amountCents)), nil)
+
 	c.JSON(http.StatusCreated, gin.H{
 		"id":         sqlcutil.UUIDToString(created.ID),
 		"groupId":    groupID.String(),
 		"senderId":   senderID.String(),
 		"receiverId": receiverID.String(),
-		"amount":     float64(amountCents) / 100,
+		"amount":     util.CentsToFloat(amountCents),
 		"status":     string(sqlcdb.PaymentStatusPending),
 		"createdAt":  createdAt,
 	})
 }
 
 func (h *PaymentsHandler) List(c *gin.Context) {
-	uidStr, ok := c.Get(auth.CtxUserIDKey)
+	uid, ok := util.MustUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	uid, err := uuid.Parse(uidStr.(string))
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
@@ -145,6 +141,7 @@ func (h *PaymentsHandler) List(c *gin.Context) {
 		Status:     st,
 	})
 	if err != nil {
+		logger.DBError("ListPaymentsForReceiverByStatus", err, logger.Fields{"user_id": uid.String(), "status": status})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list payments"})
 		return
 	}
@@ -157,7 +154,7 @@ func (h *PaymentsHandler) List(c *gin.Context) {
 			"groupId":    sqlcutil.UUIDToString(p.GroupID),
 			"senderId":   sqlcutil.UUIDToString(p.SenderID),
 			"receiverId": sqlcutil.UUIDToString(p.ReceiverID),
-			"amount":     mustMoneyToFloat(p.Amount),
+			"amount":     util.MustMoneyToFloat(p.Amount),
 			"status":     string(p.Status),
 			"proofUrl":   p.ProofUrl,
 			"createdAt":  createdAt,
@@ -176,14 +173,8 @@ func (h *PaymentsHandler) Reject(c *gin.Context) {
 }
 
 func (h *PaymentsHandler) review(c *gin.Context, newStatus sqlcdb.PaymentStatus) {
-	uidStr, ok := c.Get(auth.CtxUserIDKey)
+	uid, ok := util.MustUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-	uid, err := uuid.Parse(uidStr.(string))
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
@@ -198,6 +189,7 @@ func (h *PaymentsHandler) review(c *gin.Context, newStatus sqlcdb.PaymentStatus)
 
 	tx, err := h.Pool.Begin(ctx)
 	if err != nil {
+		logger.DBError("BeginTx", err, logger.Fields{"operation": "ReviewPayment", "payment_id": paymentID.String()})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update payment"})
 		return
 	}
@@ -228,6 +220,7 @@ func (h *PaymentsHandler) review(c *gin.Context, newStatus sqlcdb.PaymentStatus)
 		DecidedBy: sqlcutil.UUID(uid),
 		DecidedAt: sqlcutil.Timestamptz(now),
 	}); err != nil {
+		logger.DBError("UpdatePaymentDecision", err, logger.Fields{"payment_id": paymentID.String()})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update payment"})
 		return
 	}
@@ -242,6 +235,7 @@ func (h *PaymentsHandler) review(c *gin.Context, newStatus sqlcdb.PaymentStatus)
 			CreatedBy: sqlcutil.UUID(uid),
 		})
 		if err != nil {
+			logger.DBError("CreateTransferExpense", err, logger.Fields{"payment_id": paymentID.String()})
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to settle payment"})
 			return
 		}
@@ -251,28 +245,34 @@ func (h *PaymentsHandler) review(c *gin.Context, newStatus sqlcdb.PaymentStatus)
 			UserID:    p.ReceiverID,
 			Amount:    p.Amount,
 		}); err != nil {
+			logger.DBError("CreateExpenseSplit", err, logger.Fields{"payment_id": paymentID.String()})
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to settle payment"})
 			return
 		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
+		logger.DBError("CommitTx", err, logger.Fields{"operation": "ReviewPayment", "payment_id": paymentID.String()})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update payment"})
 		return
 	}
 
+	// Log activity
+	activityType := "payment_approved"
+	action := "approved"
+	if newStatus == sqlcdb.PaymentStatusRejected {
+		activityType = "payment_rejected"
+		action = "rejected"
+	}
+	_ = LogActivity(ctx, qtx, p.GroupID, uid, activityType, fmt.Sprintf("A payment was %s", action), nil)
+
 	c.JSON(http.StatusOK, gin.H{"status": string(newStatus)})
 }
 
-func deref(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
+// deref moved to internal/util/ptr.go
 
 func (h *PaymentsHandler) UploadProof(c *gin.Context) {
-	_, ok := mustUserID(c)
+	_, ok := util.MustUserID(c)
 	if !ok {
 		return
 	}

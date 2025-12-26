@@ -1,12 +1,21 @@
 import { apiRequest } from './client'
 import type { Expense } from '../types'
 
+export type PaymentQR = {
+  id: string
+  provider: string
+  qrUrl: string
+  isPrimary: boolean
+  createdAt: string
+}
+
 export type AuthUser = {
   id: string
   email: string
   name?: string | null
   avatarUrl?: string | null
   qrUrl?: string | null
+  paymentQRs?: PaymentQR[]
 }
 
 export const api = {
@@ -56,14 +65,31 @@ export const api = {
   },
 
   getUserPublicProfile(userId: string) {
-    return apiRequest<{ id: string; name?: string | null; avatarUrl?: string | null; qrUrl?: string | null }>(
+    return apiRequest<{ id: string; name?: string | null; avatarUrl?: string | null; qrUrl?: string | null; paymentQRs?: PaymentQR[] }>(
       `/v1/users/${encodeURIComponent(userId)}/profile`,
     )
   },
 
+  // Payment QR Codes
+  addPaymentQR(provider: string, file: File) {
+    const form = new FormData()
+    form.append('provider', provider)
+    form.append('qr_image', file)
+    return apiRequest<PaymentQR>(`/v1/auth/payment-qr`, { method: 'POST', body: form })
+  },
+  listPaymentQRs() {
+    return apiRequest<PaymentQR[]>(`/v1/auth/payment-qr`)
+  },
+  deletePaymentQR(id: string) {
+    return apiRequest<{ message: string }>(`/v1/auth/payment-qr/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  },
+  setPrimaryPaymentQR(id: string) {
+    return apiRequest<{ message: string }>(`/v1/auth/payment-qr/${encodeURIComponent(id)}/primary`, { method: 'PATCH' })
+  },
+
   // Groups
   listGroups() {
-    return apiRequest<Array<{ id: string; name: string; createdAt: string }>>(`/v1/groups`)
+    return apiRequest<Array<{ id: string; name: string; createdAt: string; memberCount?: number }>>(`/v1/groups`)
   },
   createGroup(name: string) {
     return apiRequest<{ id: string; name: string; createdAt: string }>(`/v1/groups`, {
@@ -84,6 +110,27 @@ export const api = {
   },
   joinByCode(code: string) {
     return apiRequest<{ groupId: string }>(`/v1/groups/join/${encodeURIComponent(code)}`, { method: 'POST' })
+  },
+  getActivity(groupId: string, limit = 50, offset = 0) {
+    return apiRequest<
+      Array<{
+        id: string
+        groupId: string
+        userId: string
+        userName: string
+        userAvatar: string
+        activityType: string
+        description: string
+        metadata: Record<string, unknown>
+        createdAt: string
+      }>
+    >(`/v1/groups/${encodeURIComponent(groupId)}/activity?limit=${limit}&offset=${offset}`)
+  },
+  leaveGroup(groupId: string) {
+    return apiRequest<void>(`/v1/groups/${encodeURIComponent(groupId)}/leave`, { method: 'DELETE' })
+  },
+  removeMember(groupId: string, userId: string) {
+    return apiRequest<void>(`/v1/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(userId)}`, { method: 'DELETE' })
   },
 
   // Nudges
@@ -163,6 +210,22 @@ export const api = {
   },
   deleteExpense(expenseId: string) {
     return apiRequest<void>(`/v1/expenses/${encodeURIComponent(expenseId)}`, { method: 'DELETE' })
+  },
+  updateExpense(expenseId: string, expense: Omit<Expense, 'id' | 'createdAt'>) {
+    return apiRequest<{
+      id: string
+      groupId: string
+      title: string
+      amount: number
+      payerId: string
+      mode?: string | null
+      type?: string | null
+      splits: Record<string, number>
+      createdAt: string
+    }>(`/v1/expenses/${encodeURIComponent(expenseId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(expense),
+    })
   },
 
   // Balances

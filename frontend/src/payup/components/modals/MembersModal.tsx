@@ -1,4 +1,4 @@
-import { Users, X } from 'lucide-react'
+import { LogOut, UserMinus, Users, X } from 'lucide-react'
 
 import type { User } from '../../types'
 
@@ -7,9 +7,12 @@ type Props = {
   onClose: () => void
   activeUsers: User[]
   balances: Record<string, number>
+  currentUser: User
+  onLeave: () => void
+  onRemove: (userId: string) => void
 }
 
-export function MembersModal({ isOpen, onClose, activeUsers, balances }: Props) {
+export function MembersModal({ isOpen, onClose, activeUsers, balances, currentUser, onLeave, onRemove }: Props) {
   if (!isOpen) return null
 
   return (
@@ -37,13 +40,35 @@ export function MembersModal({ isOpen, onClose, activeUsers, balances }: Props) 
                   </div>
                   <span className="font-bold text-white text-sm">{user.name}</span>
                 </div>
-                <div className={`text-right ${isPositive ? 'text-[#dfff4f]' : isNegative ? 'text-[#ff4f99]' : 'text-gray-500'}`}>
-                  <span className="text-[10px] font-mono block uppercase opacity-70 mb-0.5">
-                    {isPositive ? 'Is Owed' : isNegative ? 'Owes' : 'Settled'}
-                  </span>
-                  <span className="font-mono font-bold text-sm">
-                    {Math.abs(bal).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
-                  </span>
+                <div className="flex items-center gap-4">
+                  <div className={`text-right ${isPositive ? 'text-[#dfff4f]' : isNegative ? 'text-[#ff4f99]' : 'text-gray-500'}`}>
+                    <span className="text-[10px] font-mono block uppercase opacity-70 mb-0.5">
+                      {isPositive ? 'Is Owed' : isNegative ? 'Owes' : 'Settled'}
+                    </span>
+                    <span className="font-mono font-bold text-sm">
+                      {Math.abs(bal).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
+                    </span>
+                  </div>
+
+                  {user.id === currentUser.id ? (
+                    <button
+                      onClick={onLeave}
+                      className="p-2 text-gray-500 hover:text-[#ff4f99] hover:bg-white/5 rounded-lg transition-colors"
+                      title="Leave Group"
+                    >
+                      <LogOut size={16} />
+                    </button>
+                  ) : (
+                    activeUsers.find((u) => u.id === currentUser.id)?.role === 'admin' && (
+                      <button
+                        onClick={() => onRemove(user.id)}
+                        className="p-2 text-gray-500 hover:text-red-500 hover:bg-white/5 rounded-lg transition-colors"
+                        title="Remove Member"
+                      >
+                        <UserMinus size={16} />
+                      </button>
+                    )
+                  )}
                 </div>
               </div>
             )
@@ -53,6 +78,9 @@ export function MembersModal({ isOpen, onClose, activeUsers, balances }: Props) 
     </div>
   )
 }
+
+
+
 
 
 

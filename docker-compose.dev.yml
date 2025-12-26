@@ -1,0 +1,72 @@
+# PayUp Full-Stack Development Environment
+# 
+# Run: docker compose -f docker-compose.dev.yml up --build
+# Or:  make dev-docker
+#
+# This provides a complete development environment with:
+# - Postgres database with persistent data
+# - Go backend with hot-reload via Air (optional - falls back to standard)
+# - Vite frontend with HMR
+#
+# All services expose ports for direct access:
+# - Frontend: http://localhost:5173
+# - Backend:  http://localhost:8080
+# - Postgres: localhost:5432
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: payup
+      POSTGRES_PASSWORD: payup
+      POSTGRES_DB: payup
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payup -d payup"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - payup_dev_pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgres://payup:payup@postgres:5432/payup?sslmode=disable
+      JWT_SECRET: dev-secret-do-not-use-in-production
+      GIN_MODE: debug
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - go_mod_cache:/go/pkg/mod
+    working_dir: /app
+    command: >
+      sh -c "go run ./cmd/migrate up && go run ./cmd/api"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    working_dir: /app
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  payup_dev_pgdata:
+  go_mod_cache:

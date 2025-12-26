@@ -134,77 +134,69 @@ func (rl *rateLimiter) getStatus(ip string) (remaining int, resetTime time.Time)
 	return v.tokens, v.lastReset.Add(rl.period)
 }
 
-// RateLimit creates a general rate limiter (60 req/min per IP)
-func RateLimit() gin.HandlerFunc {
-	limiter := newRateLimiter(60, time.Minute)
+// RateLimitConfig holds configuration for a rate limiter.
+type RateLimitConfig struct {
+	Rate       int           // Maximum requests allowed per period
+	Period     time.Duration // Time period for the rate limit
+	ErrorMsg   string        // Custom error message
+	RetryAfter int           // Retry-After header value in seconds
+}
+
+// rateLimitMiddleware creates a rate limiting middleware with the given config.
+func rateLimitMiddleware(cfg RateLimitConfig) gin.HandlerFunc {
+	limiter := newRateLimiter(cfg.Rate, cfg.Period)
+	limitStr := formatInt(cfg.Rate)
+	retryStr := formatInt(cfg.RetryAfter)
 
 	return func(c *gin.Context) {
 		ip := c.ClientIP()
 		remaining, resetTime := limiter.getStatus(ip)
 
 		// Set rate limit headers
-		c.Header("X-RateLimit-Limit", "60")
+		c.Header("X-RateLimit-Limit", limitStr)
 		c.Header("X-RateLimit-Remaining", formatInt(remaining))
 		c.Header("X-RateLimit-Reset", formatInt(int(resetTime.Unix())))
 
 		if !limiter.allow(ip) {
-			c.Header("Retry-After", "60")
+			c.Header("Retry-After", retryStr)
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "rate limit exceeded, try again later",
+				"error": cfg.ErrorMsg,
 			})
 			return
 		}
 		c.Next()
 	}
+}
+
+// RateLimit creates a general rate limiter (60 req/min per IP)
+func RateLimit() gin.HandlerFunc {
+	return rateLimitMiddleware(RateLimitConfig{
+		Rate:       60,
+		Period:     time.Minute,
+		ErrorMsg:   "rate limit exceeded, try again later",
+		RetryAfter: 60,
+	})
 }
 
 // AuthRateLimit creates stricter limits for auth endpoints (5 attempts per 15 minutes)
 // Used for login/register/oauth endpoints due to higher security risk
 func AuthRateLimit() gin.HandlerFunc {
-	limiter := newRateLimiter(5, 15*time.Minute)
-
-	return func(c *gin.Context) {
-		ip := c.ClientIP()
-		remaining, resetTime := limiter.getStatus(ip)
-
-		// Set rate limit headers
-		c.Header("X-RateLimit-Limit", "5")
-		c.Header("X-RateLimit-Remaining", formatInt(remaining))
-		c.Header("X-RateLimit-Reset", formatInt(int(resetTime.Unix())))
-
-		if !limiter.allow(ip) {
-			c.Header("Retry-After", "900")
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "too many attempts, try again in 15 minutes",
-			})
-			return
-		}
-		c.Next()
-	}
+	return rateLimitMiddleware(RateLimitConfig{
+		Rate:       5,
+		Period:     15 * time.Minute,
+		ErrorMsg:   "too many attempts, try again in 15 minutes",
+		RetryAfter: 900,
+	})
 }
 
 // PaymentRateLimit for payment submissions (20 payments per hour)
 func PaymentRateLimit() gin.HandlerFunc {
-	limiter := newRateLimiter(20, time.Hour)
-
-	return func(c *gin.Context) {
-		ip := c.ClientIP()
-		remaining, resetTime := limiter.getStatus(ip)
-
-		// Set rate limit headers
-		c.Header("X-RateLimit-Limit", "20")
-		c.Header("X-RateLimit-Remaining", formatInt(remaining))
-		c.Header("X-RateLimit-Reset", formatInt(int(resetTime.Unix())))
-
-		if !limiter.allow(ip) {
-			c.Header("Retry-After", "3600")
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "payment rate limit exceeded, try again later",
-			})
-			return
-		}
-		c.Next()
-	}
+	return rateLimitMiddleware(RateLimitConfig{
+		Rate:       20,
+		Period:     time.Hour,
+		ErrorMsg:   "payment rate limit exceeded, try again later",
+		RetryAfter: 3600,
+	})
 }
 
 // RefreshRateLimit creates more lenient limits for token refresh (30 attempts per 15 minutes)
@@ -213,24 +205,10 @@ func PaymentRateLimit() gin.HandlerFunc {
 // - Multiple browser tabs from the same user shouldn't cause lockouts
 // - Proactive refresh on token expiration needs headroom
 func RefreshRateLimit() gin.HandlerFunc {
-	limiter := newRateLimiter(30, 15*time.Minute)
-
-	return func(c *gin.Context) {
-		ip := c.ClientIP()
-		remaining, resetTime := limiter.getStatus(ip)
-
-		// Set rate limit headers
-		c.Header("X-RateLimit-Limit", "30")
-		c.Header("X-RateLimit-Remaining", formatInt(remaining))
-		c.Header("X-RateLimit-Reset", formatInt(int(resetTime.Unix())))
-
-		if !limiter.allow(ip) {
-			c.Header("Retry-After", "900")
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error": "too many refresh attempts, try again in 15 minutes",
-			})
-			return
-		}
-		c.Next()
-	}
+	return rateLimitMiddleware(RateLimitConfig{
+		Rate:       30,
+		Period:     15 * time.Minute,
+		ErrorMsg:   "too many refresh attempts, try again in 15 minutes",
+		RetryAfter: 900,
+	})
 }

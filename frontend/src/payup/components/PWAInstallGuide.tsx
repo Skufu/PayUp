@@ -1,7 +1,6 @@
 import { memo, useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Icon } from '@iconify/react'
-import { Download, Share, Smartphone, Plus, ArrowRight, Check } from 'lucide-react'
+import { Download, Share, Smartphone, Plus, ArrowRight, Check, Zap, WifiOff, Bell, Maximize, Loader2 } from 'lucide-react'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -61,7 +60,7 @@ export const PWAInstallGuide = memo(function PWAInstallGuide({ onContinue }: Pro
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
@@ -81,12 +80,12 @@ export const PWAInstallGuide = memo(function PWAInstallGuide({ onContinue }: Pro
           <h2 className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-4">Why Install?</h2>
           <div className="space-y-4">
             {[
-              { icon: 'lucide:zap', text: 'Instant access from home screen' },
-              { icon: 'lucide:wifi-off', text: 'Works offline' },
-              { icon: 'lucide:bell', text: 'Get push notifications' },
-              { icon: 'lucide:maximize', text: 'Full-screen app experience' },
+              { Icon: Zap, text: 'Instant access from home screen' },
+              { Icon: WifiOff, text: 'Works offline' },
+              { Icon: Bell, text: 'Get push notifications' },
+              { Icon: Maximize, text: 'Full-screen app experience' },
             ].map((benefit, i) => (
-              <motion.div 
+              <motion.div
                 key={i}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -94,7 +93,7 @@ export const PWAInstallGuide = memo(function PWAInstallGuide({ onContinue }: Pro
                 className="flex items-center gap-3"
               >
                 <div className="w-8 h-8 rounded-lg bg-[#dfff4f]/10 flex items-center justify-center shrink-0">
-                  <Icon icon={benefit.icon} className="w-4 h-4 text-[#dfff4f]" />
+                  <benefit.Icon className="w-4 h-4 text-[#dfff4f]" />
                 </div>
                 <span className="text-sm text-gray-300">{benefit.text}</span>
               </motion.div>
@@ -105,7 +104,7 @@ export const PWAInstallGuide = memo(function PWAInstallGuide({ onContinue }: Pro
         {/* Installation Instructions */}
         <div className="bg-[#131316]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 mb-6 flex-1">
           {isInstalled ? (
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className="flex flex-col items-center justify-center h-full text-center py-8"
@@ -175,7 +174,7 @@ export const PWAInstallGuide = memo(function PWAInstallGuide({ onContinue }: Pro
                 >
                   {installing ? (
                     <>
-                      <Icon icon="eos-icons:loading" className="w-5 h-5" />
+                      <Loader2 className="w-5 h-5 animate-spin" />
                       Installing...
                     </>
                   ) : (

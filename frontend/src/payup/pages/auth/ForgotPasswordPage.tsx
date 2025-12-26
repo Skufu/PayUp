@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Icon } from '@iconify/react'
+import { AlertCircle, ArrowLeft, ArrowRight, Loader2, Mail, MailCheck } from 'lucide-react'
 
 import type { ApiError } from '../../api/client'
 import { api } from '../../api/endpoints'
@@ -42,7 +42,7 @@ export function ForgotPasswordPage() {
           className="w-full max-w-md bg-[#131316]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl relative z-10 text-center"
         >
           <div className="w-16 h-16 bg-[#dfff4f]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Icon icon="lucide:mail-check" className="w-8 h-8 text-[#dfff4f]" />
+            <MailCheck className="w-8 h-8 text-[#dfff4f]" />
           </div>
           <h2 className="text-2xl font-bold mb-4">Check Your Email</h2>
           <p className="text-gray-400 mb-6">
@@ -52,7 +52,7 @@ export function ForgotPasswordPage() {
             to="/auth/login"
             className="inline-flex items-center gap-2 text-[#dfff4f] font-bold hover:underline"
           >
-            <Icon icon="lucide:arrow-left" className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4" />
             Back to Login
           </Link>
         </motion.div>
@@ -87,7 +87,7 @@ export function ForgotPasswordPage() {
             animate={{ height: 'auto', opacity: 1 }}
             className="bg-[#ff4f99]/10 border border-[#ff4f99]/20 rounded-xl p-3 mb-6 flex items-start gap-3 text-sm text-[#ff4f99]"
           >
-            <Icon icon="lucide:alert-circle" className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             {err}
           </motion.div>
         )}
@@ -111,7 +111,7 @@ export function ForgotPasswordPage() {
                 placeholder="you@example.com"
                 required
               />
-              <Icon icon="lucide:mail" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 group-focus-within:text-[#dfff4f] transition-colors" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 group-focus-within:text-[#dfff4f] transition-colors" />
             </div>
           </div>
 
@@ -121,13 +121,13 @@ export function ForgotPasswordPage() {
           >
             {busy ? (
               <>
-                <Icon icon="eos-icons:loading" className="w-5 h-5" />
+                <Loader2 className="w-5 h-5 animate-spin" />
                 Sending...
               </>
             ) : (
               <>
                 Send Reset Link
-                <Icon icon="lucide:arrow-right" className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </>
             )}
           </button>
@@ -135,7 +135,7 @@ export function ForgotPasswordPage() {
 
         <div className="mt-8 pt-8 border-t border-white/5 text-center">
           <Link className="text-[#dfff4f] font-bold hover:underline inline-flex items-center gap-2" to="/auth/login">
-            <Icon icon="lucide:arrow-left" className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4" />
             Back to Login
           </Link>
         </div>

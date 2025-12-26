@@ -38,10 +38,11 @@ func New(deps Deps) *gin.Engine {
 
 	// SECURITY MIDDLEWARE (ORDER MATTERS!)
 	r.Use(middleware.RecoveryWithLogger()) // 1. Panic recovery with logging
-	r.Use(middleware.CORS())               // 2. CORS before other handlers
-	r.Use(middleware.SecurityHeaders())    // 3. Security headers on all responses
-	r.Use(middleware.RateLimit())          // 4. General rate limiting
-	r.Use(middleware.StructuredLogger())   // 5. Structured request logging
+	r.Use(middleware.RequestID())          // 2. Request ID for tracing (early for all logs)
+	r.Use(middleware.CORS())               // 3. CORS before other handlers
+	r.Use(middleware.SecurityHeaders())    // 4. Security headers on all responses
+	r.Use(middleware.RateLimit())          // 5. General rate limiting
+	r.Use(middleware.StructuredLogger())   // 6. Structured request logging
 
 	// HTTPS enforcement in production
 	if os.Getenv("GIN_MODE") == "release" {
@@ -81,20 +82,35 @@ func New(deps Deps) *gin.Engine {
 		authProfile := v1.Group("/auth")
 		authProfile.GET("/me", auth.Middleware(deps.Issuer), ah.Me)
 		authProfile.PATCH("/profile", auth.Middleware(deps.Issuer), ah.UpdateProfile)
+		
+		// Payment QR management
+		paymentQRGroup := authProfile.Group("/payment-qr")
+		paymentQRGroup.Use(auth.Middleware(deps.Issuer))
+		{
+			paymentQRGroup.GET("", ah.ListPaymentQRs)
+			paymentQRGroup.POST("", ah.AddPaymentQR)
+			paymentQRGroup.DELETE("/:id", ah.DeletePaymentQR)
+			paymentQRGroup.PATCH("/:id/primary", ah.SetPrimaryPaymentQR)
+		}
 
 		v1.GET("/users/:id/profile", auth.Middleware(deps.Issuer), ah.GetUserPublicProfile)
 
 		gh := &handlers.GroupsHandler{Pool: deps.Pool, Q: deps.Q}
 		groups := v1.Group("/groups", auth.Middleware(deps.Issuer))
-		groups.GET("", gh.List)
-		groups.POST("", gh.Create)
-		groups.GET("/:id", gh.Detail)
-		groups.POST("/:id/invite", gh.CreateInvite)
-		groups.POST("/join/:code", gh.JoinByCode)
-
+		{
+			groups.GET("", gh.List)
+			groups.POST("", gh.Create)
+			groups.GET("/:id", gh.Detail)
+			groups.POST("/:id/invite", gh.CreateInvite)
+			groups.POST("/join/:code", gh.JoinByCode)
+			groups.DELETE("/:id/leave", gh.Leave)
+			groups.DELETE("/:id/members/:userId", gh.RemoveMember)
+			groups.GET("/:id/activity", (&handlers.ActivityHandler{Pool: deps.Pool, Q: deps.Q}).ListByGroup)
+		}
 		eh := &handlers.ExpensesHandler{Pool: deps.Pool, Q: deps.Q}
 		v1.GET("/groups/:id/expenses", auth.Middleware(deps.Issuer), eh.ListByGroup)
 		v1.POST("/groups/:id/expenses", auth.Middleware(deps.Issuer), eh.CreateForGroup)
+		v1.PATCH("/expenses/:id", auth.Middleware(deps.Issuer), eh.Update)
 		v1.DELETE("/expenses/:id", auth.Middleware(deps.Issuer), eh.Delete)
 
 		bh := &handlers.BalancesHandler{Q: deps.Q}

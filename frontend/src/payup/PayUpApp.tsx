@@ -5,6 +5,7 @@ import { Fonts } from './Fonts'
 import { AppShell } from './components/AppShell'
 import { NotificationView } from './components/NotificationView'
 import { WalletView } from './components/WalletView'
+import { ActivityFeed } from './components/ActivityFeed'
 import { OfflineIndicator } from './components/OfflineIndicator'
 import { SideMenu, SideMenuContent } from './components/modals/SideMenu'
 import { ConfirmDialog } from './components/modals/ConfirmDialog'
@@ -61,9 +62,10 @@ export function PayUpApp() {
 
   // Data State
   // UI State
-  const [activeTab, setActiveTab] = useState<'wallet' | 'notifications'>('wallet')
+  const [activeTab, setActiveTab] = useState<'wallet' | 'notifications' | 'activity'>('wallet')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [addModalMode, setAddModalMode] = useState<AddModalMode>('expense')
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [payModal, setPayModal] = useState<{ open: boolean; payeeId: string | null; amount: number }>({
     open: false,
     payeeId: null,
@@ -86,11 +88,12 @@ export function PayUpApp() {
     message: string
     variant: 'danger' | 'warning' | 'default'
     onConfirm: () => void
-  }>({ isOpen: false, title: '', message: '', variant: 'default', onConfirm: () => {} })
+  }>({ isOpen: false, title: '', message: '', variant: 'default', onConfirm: () => { } })
 
   const groupsQuery = useQuery({
     queryKey: ['groups'],
     queryFn: () => api.listGroups(),
+    staleTime: 30 * 1000, // 30 seconds - groups don't change frequently
   })
 
   const effectiveGroupId = currentGroupId ?? groupsQuery.data?.[0]?.id ?? null
@@ -99,12 +102,14 @@ export function PayUpApp() {
     queryKey: ['group', effectiveGroupId],
     queryFn: () => api.groupDetail(effectiveGroupId!),
     enabled: !!effectiveGroupId,
+    staleTime: 60 * 1000, // 1 minute - group details rarely change
   })
 
   const expensesQuery = useQuery({
     queryKey: ['expenses', effectiveGroupId],
     queryFn: () => api.listExpenses(effectiveGroupId!),
     enabled: !!effectiveGroupId,
+    staleTime: 10 * 1000, // 10 seconds - expenses may change more often
     select: (rows) =>
       rows.map((r) => ({
         id: r.id,
@@ -123,12 +128,13 @@ export function PayUpApp() {
     queryKey: ['balances', effectiveGroupId],
     queryFn: () => api.getBalances(effectiveGroupId!),
     enabled: !!effectiveGroupId,
+    staleTime: 10 * 1000, // 10 seconds - balances change with expenses
   })
 
   const paymentsQuery = useQuery({
     queryKey: ['payments', 'pending'],
     queryFn: () => api.listPayments('pending'),
-    enabled: activeTab === 'notifications',
+    enabled: authState.status === 'authed' && !!effectiveGroupId,
     select: (rows) =>
       rows.map((p) => ({
         id: p.id,
@@ -141,16 +147,26 @@ export function PayUpApp() {
       })),
   })
 
+  // Activity Feed Query
+  const activitiesQuery = useQuery({
+    queryKey: ['activity', effectiveGroupId],
+    queryFn: () => (effectiveGroupId ? api.getActivity(effectiveGroupId) : Promise.resolve([])),
+    enabled: authState.status === 'authed' && !!effectiveGroupId && activeTab === 'activity',
+    staleTime: 5000,
+  })
+
   const unreadNudgeCountQuery = useQuery({
     queryKey: ['nudges', 'unread-count'],
     queryFn: () => api.getUnreadNudgeCount(),
     enabled: authState.status === 'authed',
+    staleTime: 30 * 1000, // 30 seconds - nudge count doesn't need instant updates
+    refetchInterval: 60 * 1000, // Refetch every minute in background
   })
 
   // 3) Active users
   const activeUsers = useMemo(() => {
     const members = groupDetailQuery.data?.members ?? []
-    
+
     // Map members with real user data from backend
     const list = members.map((m) => {
       const displayName = m.name || `User ${m.userId.slice(0, 6)}`
@@ -160,9 +176,10 @@ export function PayUpApp() {
         avatar: initials(displayName),
         color: COLORS[hashString(m.userId) % COLORS.length],
         qr: m.avatarUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PAYUP-${encodeURIComponent(m.userId)}`,
+        role: m.role,
       }
     })
-    
+
     // During initial load, keep UI functional
     if (list.length === 0) return [currentUser]
     return list
@@ -191,11 +208,17 @@ export function PayUpApp() {
     setIsCreateGroupOpen(false)
   }, [qc])
 
-  const handleAddExpense = useCallback(async (expenseData: Omit<Expense, 'id' | 'createdAt'>) => {
+  const handleAddExpense = useCallback(async (expenseData: { id?: string } & Omit<Expense, 'id' | 'createdAt'>) => {
     if (!effectiveGroupId) return
-    await api.createExpense(effectiveGroupId, expenseData)
+    const { id, ...data } = expenseData
+    if (id) {
+      await api.updateExpense(id, data)
+    } else {
+      await api.createExpense(effectiveGroupId, data)
+    }
     await qc.invalidateQueries({ queryKey: ['expenses', effectiveGroupId] })
     await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
+    await qc.invalidateQueries({ queryKey: ['activity', effectiveGroupId] })
   }, [effectiveGroupId, qc])
 
   const handleDeleteExpense = useCallback((expenseId: string) => {
@@ -209,6 +232,7 @@ export function PayUpApp() {
         await api.deleteExpense(expenseId)
         await qc.invalidateQueries({ queryKey: ['expenses', effectiveGroupId] })
         await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
+        await qc.invalidateQueries({ queryKey: ['activity', effectiveGroupId] })
         setConfirmDialog(prev => ({ ...prev, isOpen: false }))
       },
     })
@@ -231,6 +255,7 @@ export function PayUpApp() {
     await qc.invalidateQueries({ queryKey: ['payments', 'pending'] })
     await qc.invalidateQueries({ queryKey: ['expenses', effectiveGroupId] })
     await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
+    await qc.invalidateQueries({ queryKey: ['activity', effectiveGroupId] })
   }, [effectiveGroupId, qc])
 
   const handleNudge = useCallback((userId: string, amount: number) => {
@@ -250,7 +275,14 @@ export function PayUpApp() {
   }, [effectiveGroupId, activeUsers])
 
   const openAddModal = useCallback((mode: AddModalMode) => {
+    setEditingExpense(null)
     setAddModalMode(mode)
+    setIsAddModalOpen(true)
+  }, [])
+
+  const handleEditExpense = useCallback((expense: Expense) => {
+    setEditingExpense(expense)
+    setAddModalMode((expense.type as AddModalMode) || 'expense')
     setIsAddModalOpen(true)
   }, [])
 
@@ -265,6 +297,39 @@ export function PayUpApp() {
     setCurrentGroupId(result.groupId)
     setIsJoinGroupOpen(false)
   }, [qc])
+
+  const handleLeaveGroup = useCallback(async () => {
+    if (!effectiveGroupId) return
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Leave Group',
+      message: 'Are you sure you want to leave this group? You must have zero balance to leave.',
+      variant: 'warning',
+      onConfirm: async () => {
+        await api.leaveGroup(effectiveGroupId)
+        await qc.invalidateQueries({ queryKey: ['groups'] })
+        setCurrentGroupId(null)
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+        setIsMembersModalOpen(false)
+      },
+    })
+  }, [effectiveGroupId, qc])
+
+  const handleRemoveMember = useCallback(async (userId: string) => {
+    if (!effectiveGroupId) return
+    const user = activeUsers.find(u => u.id === userId)
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Remove Member',
+      message: `Are you sure you want to remove ${user?.name || 'this member'}? They must have zero balance.`,
+      variant: 'danger',
+      onConfirm: async () => {
+        await api.removeMember(effectiveGroupId, userId)
+        await qc.invalidateQueries({ queryKey: ['group', effectiveGroupId] })
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+      },
+    })
+  }, [effectiveGroupId, qc, activeUsers])
 
   // Memoized UI callbacks
   const handleOpenMenu = useCallback(() => setIsMenuOpen(true), [])
@@ -281,12 +346,25 @@ export function PayUpApp() {
   const handleCloseMyQr = useCallback(() => setIsMyQrModalOpen(false), [])
   const handleOpenInvite = useCallback(() => setIsInviteModalOpen(true), [])
   const handleCloseInvite = useCallback(() => setIsInviteModalOpen(false), [])
-  const handleCloseAddModal = useCallback(() => setIsAddModalOpen(false), [])
+  const handleCloseAddModal = useCallback(() => {
+    setIsAddModalOpen(false)
+    setEditingExpense(null)
+  }, [])
   const handleClosePushPrompt = useCallback(() => setIsPushPromptOpen(false), [])
   const handleCentralAdd = useCallback(() => openAddModal('expense'), [openAddModal])
   const handlePayClick = useCallback((uid: string, amt: number) => setPayModal({ open: true, payeeId: uid, amount: amt }), [])
   const handleClosePayModal = useCallback(() => setPayModal((p) => ({ ...p, open: false })), [])
   const handleSelectGroup = useCallback((g: { id: string }) => setCurrentGroupId(g.id), [])
+
+  // Pull-to-refresh handler
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] }),
+      qc.invalidateQueries({ queryKey: ['expenses', effectiveGroupId] }),
+      qc.invalidateQueries({ queryKey: ['payments', 'pending'] }),
+      qc.invalidateQueries({ queryKey: ['activity', effectiveGroupId] }),
+    ])
+  }, [qc, effectiveGroupId])
 
   const pendingCount =
     payments.filter((p) => p.receiverId === currentUser.id && p.status === 'pending').length +
@@ -299,6 +377,7 @@ export function PayUpApp() {
       name: g.name,
       members: [] as string[],
       createdAt: Date.parse(g.createdAt),
+      memberCount: g.memberCount,
     }))
   }, [groupsQuery.data])
 
@@ -337,6 +416,7 @@ export function PayUpApp() {
         onOpenMyQr={handleOpenMyQr}
         onOpenInvite={handleOpenInvite}
         onLogout={logout}
+        onRefresh={handleRefresh}
         sidebar={
           <SideMenuContent
             groups={groupsList}
@@ -345,6 +425,7 @@ export function PayUpApp() {
             onCreateGroup={handleOpenCreateGroup}
             onJoinGroup={handleOpenJoinGroup}
             onOpenProfile={handleOpenProfile}
+            onOpenMembers={handleOpenMembers}
             currentUser={currentUser}
           />
         }
@@ -359,6 +440,7 @@ export function PayUpApp() {
             onPayClick={handlePayClick}
             onNudgeClick={handleNudge}
             onDeleteExpense={handleDeleteExpense}
+            onEditExpense={handleEditExpense}
           />
         )}
 
@@ -369,6 +451,10 @@ export function PayUpApp() {
             activeUsers={activeUsers}
             onReviewPayment={handleReviewPayment}
           />
+        )}
+
+        {activeTab === 'activity' && (
+          <ActivityFeed activities={activitiesQuery.data ?? []} />
         )}
       </AppShell>
 
@@ -382,6 +468,7 @@ export function PayUpApp() {
         onCreateGroup={handleOpenCreateGroup}
         onJoinGroup={handleOpenJoinGroup}
         onOpenProfile={handleOpenProfile}
+        onOpenMembers={handleOpenMembers}
         currentUser={currentUser}
       />
 
@@ -402,6 +489,7 @@ export function PayUpApp() {
           <AddExpenseModal
             isOpen
             initialMode={addModalMode}
+            editingExpense={editingExpense}
             onClose={handleCloseAddModal}
             currentUser={currentUser}
             activeUsers={activeUsers}
@@ -427,6 +515,9 @@ export function PayUpApp() {
             onClose={handleCloseMembers}
             activeUsers={activeUsers}
             balances={balances}
+            currentUser={currentUser}
+            onLeave={handleLeaveGroup}
+            onRemove={handleRemoveMember}
           />
         )}
 

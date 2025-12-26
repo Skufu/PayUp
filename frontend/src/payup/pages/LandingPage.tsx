@@ -1,4 +1,4 @@
-import { Icon } from '@iconify/react'
+import { ArrowRight, Menu, Shield, Users, X, Zap } from 'lucide-react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -23,15 +23,15 @@ const NetworkBackground = () => {
   const [transactions, setTransactions] = useState<{ id: number; start: number; end: number }[]>([])
 
   useEffect(() => {
-    // Generate static nodes (users) once.
-    const newNodes = Array.from({ length: 20 }, () => ({
+    // Generate fewer static nodes for better performance
+    const newNodes = Array.from({ length: 12 }, () => ({
       x: Math.random() * 100,
       y: Math.random() * 100,
     }))
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setNodes(newNodes)
 
-    // Simulate transactions periodically
+    // Simulate transactions less frequently for better performance
     const interval = setInterval(() => {
       if (newNodes.length < 2) return
       const start = Math.floor(Math.random() * newNodes.length)
@@ -45,7 +45,7 @@ const NetworkBackground = () => {
       setTimeout(() => {
         setTransactions((prev) => prev.filter((t) => t.id !== id))
       }, 2000)
-    }, 500)
+    }, 1000) // Reduced from 500ms to 1000ms
 
     return () => clearInterval(interval)
   }, [])
@@ -53,10 +53,10 @@ const NetworkBackground = () => {
   return (
     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
       <div className="absolute inset-0 bg-[#050507]" />
-      
+
       {/* Grid overlay */}
-      <div 
-        className="absolute inset-0 z-0 opacity-[0.03]" 
+      <div
+        className="absolute inset-0 z-0 opacity-[0.03]"
         style={{
           backgroundImage: `linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)`,
           backgroundSize: '4rem 4rem',
@@ -66,12 +66,12 @@ const NetworkBackground = () => {
       <svg className="absolute inset-0 w-full h-full opacity-30">
         {/* Nodes */}
         {nodes.map((node, i) => (
-          <circle 
-            key={i} 
-            cx={`${node.x}%`} 
-            cy={`${node.y}%`} 
-            r="2" 
-            fill="#ffffff" 
+          <circle
+            key={i}
+            cx={`${node.x}%`}
+            cy={`${node.y}%`}
+            r="2"
+            fill="#ffffff"
             opacity="0.2"
           />
         ))}
@@ -97,7 +97,7 @@ const NetworkBackground = () => {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5 }}
               />
-              
+
               {/* Moving Packet */}
               <motion.circle
                 r="3"
@@ -109,7 +109,7 @@ const NetworkBackground = () => {
             </g>
           )
         })}
-        
+
         <defs>
           <linearGradient id="gradient-line" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#dfff4f" stopOpacity="0" />
@@ -118,7 +118,7 @@ const NetworkBackground = () => {
           </linearGradient>
         </defs>
       </svg>
-      
+
       {/* Radial fade out */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#050507_90%)]" />
     </div>
@@ -148,38 +148,38 @@ export function LandingPage() {
           <Link to="/" className="text-2xl font-display font-bold tracking-tight text-[#dfff4f]">
             PayUp.
           </Link>
-          
+
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
-             <Link 
-              to="/auth/login" 
+            <Link
+              to="/auth/login"
               className="text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-white transition-colors"
             >
               Log In
             </Link>
-            <Link 
-              to="/auth/register" 
+            <Link
+              to="/auth/register"
               className="group relative px-6 py-3 rounded-xl bg-[#dfff4f] text-black text-xs font-bold uppercase tracking-widest overflow-hidden transition-all hover:bg-[#ccee3e]"
             >
               <span className="relative z-10 flex items-center gap-2">
                 Get Started
-                <Icon icon="lucide:arrow-right" className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
               </span>
             </Link>
           </div>
 
           {/* Mobile Hamburger */}
-          <button 
+          <button
             className="md:hidden p-2 text-white hover:text-[#dfff4f] transition-colors"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
-            <Icon icon={mobileMenuOpen ? "lucide:x" : "lucide:menu"} className="w-6 h-6" />
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -194,7 +194,7 @@ export function LandingPage() {
       {/* Hero Section */}
       <section className="relative pt-40 pb-20 md:pt-60 md:pb-40 px-6">
         <motion.div style={{ y }} className="max-w-7xl mx-auto relative z-10">
-          <motion.div 
+          <motion.div
             initial="initial"
             whileInView="animate"
             viewport={{ once: true }}
@@ -205,12 +205,12 @@ export function LandingPage() {
               <span className="w-2 h-2 rounded-full bg-[#dfff4f] animate-pulse" />
               Now available in beta
             </motion.div>
-            
+
             <motion.h1 variants={fadeInUp} className="font-display text-5xl md:text-8xl lg:text-9xl leading-[0.9] tracking-tighter mb-10 text-white">
               SPLIT BILLS, <br />
               <span className="text-[#dfff4f] italic relative inline-block">
                 KEEP FRIENDS.
-                <motion.span 
+                <motion.span
                   className="absolute -bottom-2 left-0 w-full h-[2px] bg-[#dfff4f]"
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
@@ -218,20 +218,20 @@ export function LandingPage() {
                 />
               </span>
             </motion.h1>
-            
+
             <motion.p variants={fadeInUp} className="text-sm md:text-base text-gray-400 max-w-xl mb-12 leading-loose tracking-wide uppercase">
-              The acid-test for shared expenses. <br className="hidden md:block"/>
+              The acid-test for shared expenses. <br className="hidden md:block" />
               No awkward conversations, just seamless settlement.
             </motion.p>
-            
+
             <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-start gap-4">
-              <Link 
+              <Link
                 to="/auth/register"
                 className="w-full sm:w-auto h-14 px-10 rounded-xl bg-[#dfff4f] text-black font-bold uppercase tracking-widest text-xs flex items-center justify-center hover:bg-[#ccee3e] transition-colors shadow-[0_0_20px_rgba(223,255,79,0.2)]"
               >
                 Start for free
               </Link>
-              <Link 
+              <Link
                 to="/about"
                 className="w-full sm:w-auto h-14 px-10 rounded-xl border border-white/10 hover:bg-white/5 flex items-center justify-center transition-colors text-xs font-bold uppercase tracking-widest text-white backdrop-blur-sm"
               >
@@ -248,22 +248,22 @@ export function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                icon: "lucide:zap",
+                icon: Zap,
                 title: "Instant Settlement",
                 desc: "Settle up with a single tap. Real-time transfers."
               },
               {
-                icon: "lucide:users",
+                icon: Users,
                 title: "Group Dynamics",
                 desc: "Perfect for roommates, trips, or dinners."
               },
               {
-                icon: "lucide:shield",
+                icon: Shield,
                 title: "Bank-Grade Security",
                 desc: "Your financial data is encrypted and protected."
               }
             ].map((feature, i) => (
-              <motion.div 
+              <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
                 whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
@@ -276,12 +276,12 @@ export function LandingPage() {
                 </div>
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-full bg-[#1c1c21] flex items-center justify-center mb-8 border border-white/5 group-hover:border-[#dfff4f] group-hover:bg-[#dfff4f] transition-all">
-                    <Icon icon={feature.icon} className="w-5 h-5 text-white group-hover:text-black transition-colors" />
+                    <feature.icon className="w-5 h-5 text-white group-hover:text-black transition-colors" />
                   </div>
                   <h3 className="font-display text-2xl font-bold mb-4 text-white">{feature.title}</h3>
                   <p className="text-gray-500 text-sm leading-relaxed max-w-[80%]">{feature.desc}</p>
                 </div>
-                
+
                 {/* Hover Beam Effect */}
                 <div className="absolute inset-0 border border-[#dfff4f] opacity-0 group-hover:opacity-10 rounded-3xl transition-opacity duration-500 pointer-events-none" />
               </motion.div>
@@ -296,14 +296,14 @@ export function LandingPage() {
           <div className="flex flex-col md:flex-row justify-between items-end gap-16 border-b border-white/10 pb-20">
             <div className="max-w-2xl">
               <h2 className="font-display text-5xl md:text-7xl font-bold mb-8 text-white leading-[0.9]">
-                NO MORE EXCUSES. <br/>
+                NO MORE EXCUSES. <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#dfff4f] to-[#ff4f99]">MAGBABAYAD KAYO.</span>
               </h2>
               <p className="text-gray-500 text-lg font-mono">Finally collect what you're owed. We make sure they don't "forget".</p>
             </div>
             <div className="flex gap-8 md:gap-16">
               <div>
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -314,7 +314,7 @@ export function LandingPage() {
                 <div className="text-[10px] uppercase tracking-widest text-[#dfff4f]">Settled</div>
               </div>
               <div>
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}

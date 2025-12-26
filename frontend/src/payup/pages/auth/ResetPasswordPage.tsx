@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Icon } from '@iconify/react'
+import { AlertCircle, AlertTriangle, ArrowLeft, ArrowRight, CheckCircle, Loader2, Lock } from 'lucide-react'
 
 import type { ApiError } from '../../api/client'
 import { api } from '../../api/endpoints'
@@ -58,7 +58,7 @@ export function ResetPasswordPage() {
           className="w-full max-w-md bg-[#131316]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl relative z-10 text-center"
         >
           <div className="w-16 h-16 bg-[#ff4f99]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Icon icon="lucide:alert-triangle" className="w-8 h-8 text-[#ff4f99]" />
+            <AlertTriangle className="w-8 h-8 text-[#ff4f99]" />
           </div>
           <h2 className="text-2xl font-bold mb-4">Invalid Reset Link</h2>
           <p className="text-gray-400 mb-6">
@@ -90,7 +90,7 @@ export function ResetPasswordPage() {
           className="w-full max-w-md bg-[#131316]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl relative z-10 text-center"
         >
           <div className="w-16 h-16 bg-[#dfff4f]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Icon icon="lucide:check-circle" className="w-8 h-8 text-[#dfff4f]" />
+            <CheckCircle className="w-8 h-8 text-[#dfff4f]" />
           </div>
           <h2 className="text-2xl font-bold mb-4">Password Reset!</h2>
           <p className="text-gray-400 mb-6">
@@ -101,7 +101,7 @@ export function ResetPasswordPage() {
             className="inline-flex items-center gap-2 bg-[#dfff4f] text-black font-bold text-sm uppercase tracking-widest px-6 py-3 rounded-xl hover:bg-[#ccee3e] transition-all"
           >
             Go to Login
-            <Icon icon="lucide:arrow-right" className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4" />
           </button>
         </motion.div>
       </div>
@@ -135,7 +135,7 @@ export function ResetPasswordPage() {
             animate={{ height: 'auto', opacity: 1 }}
             className="bg-[#ff4f99]/10 border border-[#ff4f99]/20 rounded-xl p-3 mb-6 flex items-start gap-3 text-sm text-[#ff4f99]"
           >
-            <Icon icon="lucide:alert-circle" className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             {err}
           </motion.div>
         )}
@@ -156,7 +156,7 @@ export function ResetPasswordPage() {
                 minLength={8}
                 required
               />
-              <Icon icon="lucide:lock" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 group-focus-within:text-[#dfff4f] transition-colors" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 group-focus-within:text-[#dfff4f] transition-colors" />
             </div>
           </div>
 
@@ -175,7 +175,7 @@ export function ResetPasswordPage() {
                 minLength={8}
                 required
               />
-              <Icon icon="lucide:lock" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 group-focus-within:text-[#dfff4f] transition-colors" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 group-focus-within:text-[#dfff4f] transition-colors" />
             </div>
           </div>
 
@@ -185,13 +185,13 @@ export function ResetPasswordPage() {
           >
             {busy ? (
               <>
-                <Icon icon="eos-icons:loading" className="w-5 h-5" />
+                <Loader2 className="w-5 h-5 animate-spin" />
                 Resetting...
               </>
             ) : (
               <>
                 Reset Password
-                <Icon icon="lucide:arrow-right" className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </>
             )}
           </button>
@@ -199,7 +199,7 @@ export function ResetPasswordPage() {
 
         <div className="mt-8 pt-8 border-t border-white/5 text-center">
           <Link className="text-[#dfff4f] font-bold hover:underline inline-flex items-center gap-2" to="/auth/login">
-            <Icon icon="lucide:arrow-left" className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4" />
             Back to Login
           </Link>
         </div>

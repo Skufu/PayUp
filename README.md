@@ -2,14 +2,20 @@
 
 Split expenses, track balances, settle up.
 
-## Quick links
+## Documentation
 
-- `docs/AI_INDEX.md` (start here)
-- `docs/ARCHITECTURE.md`
-- `docs/FRONTEND.md`
-- `docs/BACKEND.md`
-- `docs/API.md`
-- `docs/DATABASE.md`
+### Technical Guides
+- [AI Index](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/AI_INDEX.md) (start here)
+- [Architecture](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/ARCHITECTURE.md)
+- [Deployment Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/technical/deployment-quickstart.md)
+- [Docker Setup](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/technical/docker.md)
+- [API Reference](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/API.md)
+
+### Detailed Modules
+- [Frontend docs](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/FRONTEND.md) | [Backend docs](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/BACKEND.md)
+- [Database Schema](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/DATABASE.md)
+- [PWA Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/guides/pwa-guide.md)
+- [Push Notifications Plan](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/plans/push-notifications.md)
 
 ## Repo layout
 
@@ -22,7 +28,43 @@ Split expenses, track balances, settle up.
 
 ## Local development
 
-### 1) Environment variables
+### Quick Start (Recommended)
+
+**With Make (Linux/macOS):**
+```bash
+make setup   # First-time setup
+make dev     # Start dev server
+```
+
+**With Bash (Windows/Git Bash):**
+```bash
+./setup.sh   # First-time setup
+./dev.sh     # Start dev server
+```
+
+Open http://localhost:5173 in your browser.
+
+### Available Commands
+
+Run `make help` to see all commands:
+
+| Command | Description |
+|---------|-------------|
+| `make setup` | First-time setup |
+| `make dev` | Start dev server (backend + frontend) |
+| `make dev-docker` | Start full stack via Docker Compose |
+| `make db` / `make db-stop` | Start/stop Postgres |
+| `make migrate` | Run database migrations |
+| `make test` | Run backend tests |
+| `make lint` | Run linters |
+| `make clean` | Stop containers and remove volumes |
+
+### Manual Setup (Alternative)
+
+<details>
+<summary>Click to expand manual setup steps</summary>
+
+#### 1) Environment variables
 
 Copy and edit:
 
@@ -37,7 +79,7 @@ Optional:
 - `VAPID_*` (push notifications)
 - `VITE_API_BASE_URL` (frontend API base; defaults to relative)
 
-### 2) Start Postgres
+#### 2) Start Postgres
 
 From repo root:
 
@@ -45,7 +87,7 @@ From repo root:
 docker compose -f backend/docker-compose.yml up -d
 ```
 
-### 3) Start app (backend + frontend)
+#### 3) Start app (backend + frontend)
 
 From repo root:
 
@@ -56,6 +98,9 @@ From repo root:
 What it does:
 - Backend: `go run ./backend/cmd/api`
 - Frontend: `npm --prefix ./frontend run dev -- --host`
+
+</details>
+
 
 ## Docker
 

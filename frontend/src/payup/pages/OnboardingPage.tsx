@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Upload, QrCode, Users, Wallet, Bell, ChevronLeft, ChevronRight, X, Sparkles } from 'lucide-react'
+import { ArrowRight, QrCode, Users, Wallet, Bell, ChevronLeft, X, Camera, Check } from 'lucide-react'
 
 import { api } from '../api/endpoints'
 import { useAuth } from '../auth/useAuth'
+import { PAYMENT_PROVIDERS } from '../constants/PaymentProviders'
 
 const TUTORIAL_SLIDES = [
   {
@@ -18,8 +19,8 @@ const TUTORIAL_SLIDES = [
   },
   {
     icon: QrCode,
-    title: 'Pay with GCash QR',
-    description: 'Upload your GCash QR so friends can pay you instantly. Quick and hassle-free.',
+    title: 'Pay with GCash & Maya',
+    description: 'Upload your payment QRs so friends can pay you instantly. Quick and hassle-free.',
   },
   {
     icon: Bell,
@@ -28,32 +29,75 @@ const TUTORIAL_SLIDES = [
   },
 ]
 
+type QRState = {
+  provider: string
+  file: File | null
+  preview: string
+}
+
 export function OnboardingPage() {
   const navigate = useNavigate()
   const { state: authState, refreshMe } = useAuth()
-  const [step, setStep] = useState<'welcome' | 'qr' | 'tutorial'>('welcome')
+
+  const [step, setStep] = useState<'welcome' | 'payment' | 'tutorial'>('welcome')
   const [name, setName] = useState(authState.status === 'authed' ? (authState.user?.name || '') : '')
-  const [qrFile, setQrFile] = useState<File | null>(null)
-  const [qrPreview, setQrPreview] = useState<string>('')
+
+  // Avatar
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string>('')
+
+  // Payment QRs
+  const [paymentQRs, setPaymentQRs] = useState<Record<string, QRState>>({
+    gcash: { provider: 'gcash', file: null, preview: '' },
+    maya: { provider: 'maya', file: null, preview: '' }
+  })
+
+  const [activeProvider, setActiveProvider] = useState<string | null>(null)
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tutorialIndex, setTutorialIndex] = useState(0)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleQrChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const qrInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     if (!file.type.startsWith('image/')) return
     if (file.size > 5 * 1024 * 1024) return
-    setQrFile(file)
+    setAvatarFile(file)
     const reader = new FileReader()
-    reader.onload = () => setQrPreview(String(reader.result ?? ''))
+    reader.onload = () => setAvatarPreview(String(reader.result ?? ''))
+    reader.readAsDataURL(file)
+  }
+
+  const handleQrChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!activeProvider) return
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    if (file.size > 5 * 1024 * 1024) return
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setPaymentQRs(prev => ({
+        ...prev,
+        [activeProvider]: {
+          provider: activeProvider,
+          file,
+          preview: String(reader.result ?? '')
+        }
+      }))
+      setActiveProvider(null)
+    }
     reader.readAsDataURL(file)
   }
 
   const handleSaveProfile = async () => {
     if (!name.trim()) {
       setError('Please enter your name')
+      setStep('welcome')
       return
     }
 
@@ -61,8 +105,19 @@ export function OnboardingPage() {
     setError(null)
 
     try {
-      await api.updateProfile(name.trim(), qrFile ?? undefined)
+      // 1. Update basic profile
+      await api.updateProfile(name.trim(), undefined, avatarFile ?? undefined)
+
+      // 2. Upload payment QRs
+      for (const key in paymentQRs) {
+        const qr = paymentQRs[key]
+        if (qr.file) {
+          await api.addPaymentQR(qr.provider, qr.file)
+        }
+      }
+
       await refreshMe()
+
       // Mark onboarding as complete
       localStorage.setItem('payup_onboarding_complete', 'true')
       navigate('/app', { replace: true })
@@ -73,18 +128,7 @@ export function OnboardingPage() {
     }
   }
 
-  const handleSkipToApp = async () => {
-    // Save name if entered
-    if (name.trim()) {
-      setSaving(true)
-      try {
-        await api.updateProfile(name.trim(), qrFile ?? undefined)
-        await refreshMe()
-      } catch {
-        // Continue even if save fails
-      }
-      setSaving(false)
-    }
+  const handleSkipToApp = () => {
     localStorage.setItem('payup_onboarding_complete', 'true')
     navigate('/app', { replace: true })
   }
@@ -97,66 +141,90 @@ export function OnboardingPage() {
     }
   }
 
-  const handlePrevTutorial = () => {
-    if (tutorialIndex > 0) {
-      setTutorialIndex(tutorialIndex - 1)
-    }
-  }
+  const hasAnyQR = useMemo(() => Object.values(paymentQRs).some(qr => !!qr.preview), [paymentQRs])
 
   return (
-    <div className="min-h-screen bg-[#050507] text-white flex flex-col">
+    <div className="min-h-screen bg-[#050507] text-white flex flex-col font-sans">
       {/* Header */}
-      <div className="p-4 flex justify-between items-center">
+      <div className="p-4 flex justify-between items-center bg-[#050507]/80 backdrop-blur-md sticky top-0 z-20">
         <div className="text-xl font-bold font-mono tracking-tight">
           <span className="text-[#dfff4f]">Pay</span>Up
         </div>
         <button
           onClick={handleSkipToApp}
-          className="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1"
+          className="text-xs font-mono uppercase tracking-widest text-gray-500 hover:text-white transition-colors flex items-center gap-1"
         >
-          Skip <X size={14} />
+          Skip Onboarding <X size={14} />
         </button>
       </div>
 
       {/* Progress indicator */}
       <div className="px-6 py-2">
-        <div className="flex gap-2">
-          <div className={`h-1 flex-1 rounded-full transition-colors ${step === 'welcome' ? 'bg-[#dfff4f]' : 'bg-white/20'}`} />
-          <div className={`h-1 flex-1 rounded-full transition-colors ${step === 'qr' ? 'bg-[#dfff4f]' : 'bg-white/20'}`} />
-          <div className={`h-1 flex-1 rounded-full transition-colors ${step === 'tutorial' ? 'bg-[#dfff4f]' : 'bg-white/20'}`} />
+        <div className="flex gap-2 max-w-sm mx-auto">
+          <div className={`h-1 flex-1 rounded-full transition-all duration-500 ${step === 'welcome' ? 'bg-[#dfff4f] w-full' : 'bg-[#dfff4f]/40'}`} />
+          <div className={`h-1 flex-1 rounded-full transition-all duration-500 ${step === 'payment' ? 'bg-[#dfff4f] w-full' : (step === 'tutorial' ? 'bg-[#dfff4f]/40' : 'bg-white/10')}`} />
+          <div className={`h-1 flex-1 rounded-full transition-all duration-500 ${step === 'tutorial' ? 'bg-[#dfff4f]' : 'bg-white/10'}`} />
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6">
-        {/* Step 1: Welcome & Name */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 pb-24 max-w-sm mx-auto w-full">
+        {/* Step 1: Profile (Name & Avatar) */}
         {step === 'welcome' && (
-          <div className="w-full max-w-sm animate-fade-in">
-            <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-[#dfff4f] rounded-full flex items-center justify-center mx-auto mb-6">
-                <Sparkles size={40} className="text-black" />
+          <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="text-center mb-10">
+              <div className="relative inline-block mb-6">
+                <div
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="w-24 h-24 bg-[#1c1c21] rounded-full flex items-center justify-center border-2 border-white/10 overflow-hidden cursor-pointer hover:border-[#dfff4f]/50 transition-colors group"
+                >
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="text-gray-500 group-hover:text-gray-300">
+                      <Users size={40} />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera size={24} className="text-white" />
+                  </div>
+                </div>
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-[#dfff4f] rounded-full flex items-center justify-center text-black border-4 border-[#050507] hover:scale-110 transition-transform"
+                >
+                  <Camera size={14} />
+                </button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
               </div>
-              <h1 className="text-3xl font-bold mb-2">Welcome to PayUp!</h1>
-              <p className="text-gray-400">Let's set up your profile so your friends can recognize you.</p>
+              <h1 className="text-3xl font-bold mb-2 tracking-tight">Getting Ready</h1>
+              <p className="text-gray-400 text-sm">Let's set up your profile so your friends can recognize you.</p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs uppercase text-gray-500 font-mono tracking-widest mb-2 block">
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase text-gray-500 font-mono tracking-[0.2em] ml-1">
                   What should we call you?
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your name"
-                  className="w-full px-4 py-4 bg-[#131316] border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#dfff4f] transition-colors text-lg"
+                  placeholder="Your display name"
+                  className="w-full px-5 py-4 bg-[#131316] border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-[#dfff4f] focus:ring-1 focus:ring-[#dfff4f] transition-all text-lg font-medium"
                   autoFocus
                 />
               </div>
 
-              {error && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+              {error && step === 'welcome' && (
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 font-bold">!</div>
                   {error}
                 </div>
               )}
@@ -168,9 +236,9 @@ export function OnboardingPage() {
                     return
                   }
                   setError(null)
-                  setStep('qr')
+                  setStep('payment')
                 }}
-                className="w-full py-4 bg-[#dfff4f] text-black font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-[#d4f53f] transition-colors"
+                className="w-full py-4 bg-[#dfff4f] text-black font-bold rounded-2xl flex items-center justify-center gap-3 hover:bg-[#d4f53f] transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(223,255,79,0.2)]"
               >
                 Continue <ArrowRight size={20} />
               </button>
@@ -178,58 +246,78 @@ export function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 2: GCash QR */}
-        {step === 'qr' && (
-          <div className="w-full max-w-sm animate-fade-in">
-            <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-[#0070E0] rounded-full flex items-center justify-center mx-auto mb-6">
-                <QrCode size={40} className="text-white" />
+        {/* Step 2: Payments */}
+        {step === 'payment' && (
+          <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="text-center mb-10">
+              <div className="w-16 h-16 bg-[#dfff4f]/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-[#dfff4f]/20">
+                <QrCode size={32} className="text-[#dfff4f]" />
               </div>
-              <h1 className="text-2xl font-bold mb-2">Add Your GCash QR</h1>
-              <p className="text-gray-400">Upload your GCash QR code so friends can pay you easily. You can add this later.</p>
+              <h1 className="text-3xl font-bold mb-2 tracking-tight">Payment Methods</h1>
+              <p className="text-gray-400 text-sm px-4">Upload your QR codes so friends can pay you easily via GCash or Maya.</p>
             </div>
 
             <div className="space-y-4">
-              <div
-                className="w-48 h-48 mx-auto bg-white p-4 rounded-xl cursor-pointer relative group overflow-hidden"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {qrPreview ? (
-                  <img src={qrPreview} alt="QR Preview" className="w-full h-full object-contain" />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                    <Upload size={32} className="mb-2" />
-                    <span className="text-sm font-mono">Tap to upload</span>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
-                  <Upload size={24} className="text-white mb-2" />
-                  <span className="text-xs font-bold text-white uppercase">{qrPreview ? 'Change' : 'Upload'}</span>
-                </div>
+              <div className="grid grid-cols-1 gap-4">
+                {PAYMENT_PROVIDERS.map((provider) => {
+                  const hasQR = !!paymentQRs[provider.id]?.preview
+                  return (
+                    <div
+                      key={provider.id}
+                      onClick={() => {
+                        setActiveProvider(provider.id)
+                        qrInputRef.current?.click()
+                      }}
+                      className={`relative group p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-4 ${hasQR
+                        ? 'bg-[#131316] border-[#dfff4f]/30 ring-1 ring-[#dfff4f]/20'
+                        : 'bg-[#131316] border-white/5 hover:border-white/20'
+                        }`}
+                    >
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner"
+                        style={{ backgroundColor: provider.lightColor }}
+                      >
+                        {provider.icon}
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="font-bold text-lg">{provider.name}</div>
+                        <div className="text-xs text-gray-500 font-mono">{hasQR ? 'QR Uploaded' : provider.description}</div>
+                      </div>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${hasQR ? 'bg-[#dfff4f] text-black scale-100' : 'bg-white/5 text-transparent scale-75 group-hover:bg-white/10'
+                        }`}>
+                        <Check size={14} className={hasQR ? 'opacity-100' : 'opacity-0'} />
+                      </div>
+
+                      {hasQR && (
+                        <div className="absolute -top-2 -right-2 w-14 h-14 bg-white p-1 rounded-lg border-2 border-[#131316] shadow-xl rotate-3">
+                          <img src={paymentQRs[provider.id].preview} alt="QR" className="w-full h-full object-contain mix-blend-multiply" />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
 
               <input
-                ref={fileInputRef}
+                ref={qrInputRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
                 onChange={handleQrChange}
               />
 
-              <p className="text-xs text-gray-500 text-center">JPG, PNG or WEBP. Max 5MB.</p>
-
-              <div className="flex gap-3">
+              <div className="flex gap-4 pt-4">
                 <button
                   onClick={() => setStep('welcome')}
-                  className="flex-1 py-4 bg-[#131316] border border-white/10 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-[#1c1c21] transition-colors"
+                  className="w-20 py-4 bg-[#131316] border border-white/10 text-white font-bold rounded-2xl flex items-center justify-center hover:bg-[#1c1c21] transition-all"
                 >
-                  <ChevronLeft size={20} /> Back
+                  <ChevronLeft size={24} />
                 </button>
                 <button
                   onClick={() => setStep('tutorial')}
-                  className="flex-1 py-4 bg-[#dfff4f] text-black font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-[#d4f53f] transition-colors"
+                  className="flex-1 py-4 bg-[#dfff4f] text-black font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-[#d4f53f] transition-all shadow-[0_0_20px_rgba(223,255,79,0.1)]"
                 >
-                  {qrPreview ? 'Continue' : 'Skip'} <ArrowRight size={20} />
+                  {hasAnyQR ? 'Continue' : 'Skip for now'} <ArrowRight size={20} />
                 </button>
               </div>
             </div>
@@ -238,55 +326,69 @@ export function OnboardingPage() {
 
         {/* Step 3: Tutorial */}
         {step === 'tutorial' && (
-          <div className="w-full max-w-sm animate-fade-in">
-            <div className="text-center mb-8">
+          <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="text-center mb-10 min-h-[220px]">
               {(() => {
                 const slide = TUTORIAL_SLIDES[tutorialIndex]
                 const Icon = slide.icon
                 return (
-                  <>
-                    <div className="w-20 h-20 bg-[#1c1c21] border border-white/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <Icon size={40} className="text-[#dfff4f]" />
+                  <div key={tutorialIndex} className="animate-in fade-in zoom-in-95 duration-500">
+                    <div className="w-20 h-20 bg-[#1c1c21] border border-white/10 rounded-3xl flex items-center justify-center mx-auto mb-8 rotate-3 shadow-2xl">
+                      <Icon size={44} className="text-[#dfff4f]" />
                     </div>
-                    <h1 className="text-2xl font-bold mb-2">{slide.title}</h1>
-                    <p className="text-gray-400">{slide.description}</p>
-                  </>
+                    <h1 className="text-3xl font-bold mb-3 tracking-tight">{slide.title}</h1>
+                    <p className="text-gray-400 text-sm leading-relaxed px-2">{slide.description}</p>
+                  </div>
                 )
               })()}
             </div>
 
             {/* Dots indicator */}
-            <div className="flex justify-center gap-2 mb-8">
+            <div className="flex justify-center gap-2 mb-10">
               {TUTORIAL_SLIDES.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setTutorialIndex(i)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    i === tutorialIndex ? 'bg-[#dfff4f]' : 'bg-white/20'
-                  }`}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${i === tutorialIndex ? 'bg-[#dfff4f] w-8' : 'bg-white/10 w-2'
+                    }`}
                 />
               ))}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <button
-                onClick={tutorialIndex === 0 ? () => setStep('qr') : handlePrevTutorial}
-                className="flex-1 py-4 bg-[#131316] border border-white/10 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-[#1c1c21] transition-colors"
+                onClick={tutorialIndex === 0 ? () => setStep('payment') : () => setTutorialIndex(p => p - 1)}
+                className="w-20 py-4 bg-[#131316] border border-white/10 text-white font-bold rounded-2xl flex items-center justify-center hover:bg-[#1c1c21] transition-all"
               >
-                <ChevronLeft size={20} /> Back
+                <ChevronLeft size={24} />
               </button>
               <button
                 onClick={handleNextTutorial}
                 disabled={saving}
-                className="flex-1 py-4 bg-[#dfff4f] text-black font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-[#d4f53f] transition-colors disabled:opacity-50"
+                className="flex-1 py-4 bg-[#dfff4f] text-black font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-[#d4f53f] transition-all disabled:opacity-50 shadow-[0_0_25px_rgba(223,255,79,0.2)]"
               >
-                {saving ? 'Saving...' : tutorialIndex === TUTORIAL_SLIDES.length - 1 ? 'Get Started' : 'Next'}{' '}
-                {!saving && <ChevronRight size={20} />}
+                {saving ? (
+                  <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                ) : tutorialIndex === TUTORIAL_SLIDES.length - 1 ? (
+                  'Let\'s Go!'
+                ) : (
+                  'Next'
+                )}
+                {!saving && <ArrowRight size={20} />}
               </button>
             </div>
           </div>
         )}
       </div>
+
+      {/* Footer hint */}
+      {step !== 'tutorial' && (
+        <div className="p-6 text-center animate-in fade-in slide-in-from-bottom-2 delay-700 duration-1000">
+          <p className="text-[10px] text-gray-600 font-mono tracking-widest uppercase">
+            {step === 'welcome' ? 'Step 1 of 3: Profile' : 'Step 2 of 3: Payments'}
+          </p>
+        </div>
+      )}
     </div>
   )
 }

@@ -4,6 +4,14 @@ export type User = {
   avatar: string
   color: string
   qr: string
+  role?: string
+  paymentQRs?: Array<{
+    id: string
+    provider: string
+    qrUrl: string
+    isPrimary: boolean
+    createdAt: string
+  }>
 }
 
 export type Group = {
@@ -11,6 +19,7 @@ export type Group = {
   name: string
   members: string[]
   createdAt: number
+  memberCount?: number
 }
 
 export type Expense = {
@@ -19,7 +28,8 @@ export type Expense = {
   amount: number
   payerId: string
   mode?: string
-  type: 'expense' | 'transfer'
+  type?: string
+  category?: string
   splits: Record<string, number>
   createdAt: number
 }

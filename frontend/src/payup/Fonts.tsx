@@ -44,10 +44,28 @@ export function Fonts() {
         from { transform: translateX(-100%); }
         to { transform: translateX(0); }
       }
+      
+      @keyframes slide-out-left {
+        from { transform: translateX(0); }
+        to { transform: translateX(-100%); }
+      }
+      
+      @keyframes slide-down {
+        from { transform: translateY(0); opacity: 1; }
+        to { transform: translateY(100%); opacity: 0; }
+      }
+      
+      @keyframes fade-out {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
 
       .animate-float { animation: float 6s ease-in-out infinite; }
       .animate-slide-up { animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
       .animate-slide-in-left { animation: slide-in-left 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+      .animate-slide-out-left { animation: slide-out-left 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .animate-slide-down { animation: slide-down 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .animate-fade-out { animation: fade-out 0.25s ease-out forwards; }
       
       /* Scrollbar hide */
       .no-scrollbar::-webkit-scrollbar { display: none; }

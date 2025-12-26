@@ -14,6 +14,7 @@ type Querier interface {
 	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) error
 	ComputeBalancesByGroup(ctx context.Context, groupID pgtype.UUID) ([]ComputeBalancesByGroupRow, error)
 	CountGroupMembers(ctx context.Context, groupID pgtype.UUID) (int64, error)
+	CreateActivity(ctx context.Context, arg CreateActivityParams) (ActivityLog, error)
 	CreateExpense(ctx context.Context, arg CreateExpenseParams) (CreateExpenseRow, error)
 	CreateExpenseSplit(ctx context.Context, arg CreateExpenseSplitParams) error
 	CreateGroup(ctx context.Context, arg CreateGroupParams) (CreateGroupRow, error)
@@ -22,23 +23,31 @@ type Querier interface {
 	CreateOAuthAccount(ctx context.Context, arg CreateOAuthAccountParams) (OauthAccount, error)
 	CreateOAuthUser(ctx context.Context, arg CreateOAuthUserParams) (CreateOAuthUserRow, error)
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (CreatePaymentRow, error)
+	CreatePaymentQR(ctx context.Context, arg CreatePaymentQRParams) (PaymentQrCode, error)
 	CreateTransferExpense(ctx context.Context, arg CreateTransferExpenseParams) (pgtype.UUID, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeleteExpense(ctx context.Context, id pgtype.UUID) error
+	DeleteExpenseSplits(ctx context.Context, expenseID pgtype.UUID) error
 	DeleteOAuthAccount(ctx context.Context, arg DeleteOAuthAccountParams) error
+	DeletePaymentQR(ctx context.Context, arg DeletePaymentQRParams) error
 	DeletePushSubscription(ctx context.Context, arg DeletePushSubscriptionParams) error
 	GetExpenseForDelete(ctx context.Context, id pgtype.UUID) (GetExpenseForDeleteRow, error)
 	GetGroup(ctx context.Context, id pgtype.UUID) (GetGroupRow, error)
 	GetInviteByCode(ctx context.Context, code string) (GetInviteByCodeRow, error)
+	GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (string, error)
 	GetOAuthAccount(ctx context.Context, arg GetOAuthAccountParams) (OauthAccount, error)
 	GetOAuthAccountsByUser(ctx context.Context, userID pgtype.UUID) ([]OauthAccount, error)
 	GetPaymentForUpdate(ctx context.Context, id pgtype.UUID) (GetPaymentForUpdateRow, error)
+	GetPaymentQRByProvider(ctx context.Context, arg GetPaymentQRByProviderParams) (PaymentQrCode, error)
+	GetPaymentQRsByUser(ctx context.Context, userID pgtype.UUID) ([]PaymentQrCode, error)
 	GetUnreadNudgeCount(ctx context.Context, receiverID pgtype.UUID) (int64, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error)
 	GetUserByIDWithPassword(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserPublicProfile(ctx context.Context, id pgtype.UUID) (GetUserPublicProfileRow, error)
 	IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (bool, error)
+	LeaveGroup(ctx context.Context, arg LeaveGroupParams) error
+	ListActivityByGroup(ctx context.Context, arg ListActivityByGroupParams) ([]ListActivityByGroupRow, error)
 	ListExpensesByGroup(ctx context.Context, groupID pgtype.UUID) ([]ListExpensesByGroupRow, error)
 	ListGroupMemberIDs(ctx context.Context, groupID pgtype.UUID) ([]pgtype.UUID, error)
 	ListGroupMembers(ctx context.Context, groupID pgtype.UUID) ([]ListGroupMembersRow, error)
@@ -49,6 +58,9 @@ type Querier interface {
 	MarkAllNudgesAsRead(ctx context.Context, receiverID pgtype.UUID) error
 	MarkNudgeAsRead(ctx context.Context, arg MarkNudgeAsReadParams) error
 	SavePushSubscription(ctx context.Context, arg SavePushSubscriptionParams) error
+	SetPrimaryPaymentQR(ctx context.Context, arg SetPrimaryPaymentQRParams) error
+	UnsetPrimaryPaymentQRs(ctx context.Context, userID pgtype.UUID) error
+	UpdateExpense(ctx context.Context, arg UpdateExpenseParams) (UpdateExpenseRow, error)
 	UpdatePaymentDecision(ctx context.Context, arg UpdatePaymentDecisionParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) error

@@ -12,9 +12,9 @@ import (
 )
 
 const createExpense = `-- name: CreateExpense :one
-INSERT INTO expenses (group_id, title, amount, payer_id, mode, type, created_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, created_at
+INSERT INTO expenses (group_id, title, amount, payer_id, mode, type, category, created_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, group_id, title, amount, payer_id, mode, type, category, created_at
 `
 
 type CreateExpenseParams struct {
@@ -24,11 +24,19 @@ type CreateExpenseParams struct {
 	PayerID   pgtype.UUID `json:"payer_id"`
 	Mode      *string     `json:"mode"`
 	Type      *string     `json:"type"`
+	Category  *string     `json:"category"`
 	CreatedBy pgtype.UUID `json:"created_by"`
 }
 
 type CreateExpenseRow struct {
 	ID        pgtype.UUID        `json:"id"`
+	GroupID   pgtype.UUID        `json:"group_id"`
+	Title     string             `json:"title"`
+	Amount    string             `json:"amount"`
+	PayerID   pgtype.UUID        `json:"payer_id"`
+	Mode      *string            `json:"mode"`
+	Type      *string            `json:"type"`
+	Category  *string            `json:"category"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
@@ -40,10 +48,21 @@ func (q *Queries) CreateExpense(ctx context.Context, arg CreateExpenseParams) (C
 		arg.PayerID,
 		arg.Mode,
 		arg.Type,
+		arg.Category,
 		arg.CreatedBy,
 	)
 	var i CreateExpenseRow
-	err := row.Scan(&i.ID, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.Title,
+		&i.Amount,
+		&i.PayerID,
+		&i.Mode,
+		&i.Type,
+		&i.Category,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 
@@ -70,6 +89,16 @@ WHERE id = $1
 
 func (q *Queries) DeleteExpense(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteExpense, id)
+	return err
+}
+
+const deleteExpenseSplits = `-- name: DeleteExpenseSplits :exec
+DELETE FROM expense_splits 
+WHERE expense_id = $1
+`
+
+func (q *Queries) DeleteExpenseSplits(ctx context.Context, expenseID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteExpenseSplits, expenseID)
 	return err
 }
 
@@ -107,6 +136,7 @@ SELECT
   e.payer_id,
   e.mode,
   e.type,
+  e.category,
   e.created_at,
   COALESCE(
     jsonb_object_agg(es.user_id::text, es.amount) FILTER (WHERE es.user_id IS NOT NULL),
@@ -127,6 +157,7 @@ type ListExpensesByGroupRow struct {
 	PayerID   pgtype.UUID        `json:"payer_id"`
 	Mode      *string            `json:"mode"`
 	Type      *string            `json:"type"`
+	Category  *string            `json:"category"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	Splits    string             `json:"splits"`
 }
@@ -148,6 +179,7 @@ func (q *Queries) ListExpensesByGroup(ctx context.Context, groupID pgtype.UUID) 
 			&i.PayerID,
 			&i.Mode,
 			&i.Type,
+			&i.Category,
 			&i.CreatedAt,
 			&i.Splits,
 		); err != nil {
@@ -185,4 +217,58 @@ func (q *Queries) ListGroupMemberIDs(ctx context.Context, groupID pgtype.UUID) (
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateExpense = `-- name: UpdateExpense :one
+UPDATE expenses 
+SET title = $2, amount = $3, payer_id = $4, mode = $5, type = $6, category = $7
+WHERE id = $1
+RETURNING id, group_id, title, amount, payer_id, mode, type, category, created_at
+`
+
+type UpdateExpenseParams struct {
+	ID       pgtype.UUID `json:"id"`
+	Title    string      `json:"title"`
+	Amount   string      `json:"amount"`
+	PayerID  pgtype.UUID `json:"payer_id"`
+	Mode     *string     `json:"mode"`
+	Type     *string     `json:"type"`
+	Category *string     `json:"category"`
+}
+
+type UpdateExpenseRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	GroupID   pgtype.UUID        `json:"group_id"`
+	Title     string             `json:"title"`
+	Amount    string             `json:"amount"`
+	PayerID   pgtype.UUID        `json:"payer_id"`
+	Mode      *string            `json:"mode"`
+	Type      *string            `json:"type"`
+	Category  *string            `json:"category"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) UpdateExpense(ctx context.Context, arg UpdateExpenseParams) (UpdateExpenseRow, error) {
+	row := q.db.QueryRow(ctx, updateExpense,
+		arg.ID,
+		arg.Title,
+		arg.Amount,
+		arg.PayerID,
+		arg.Mode,
+		arg.Type,
+		arg.Category,
+	)
+	var i UpdateExpenseRow
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.Title,
+		&i.Amount,
+		&i.PayerID,
+		&i.Mode,
+		&i.Type,
+		&i.Category,
+		&i.CreatedAt,
+	)
+	return i, err
 }

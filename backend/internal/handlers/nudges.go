@@ -8,6 +8,7 @@ import (
 
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
+	"github.com/Skufu/PayUp/internal/util"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -93,7 +94,7 @@ func (h *NudgesHandler) Create(c *gin.Context) {
 		msg = "Hey! Just a friendly reminder about your pending payment 💸"
 	}
 
-	amountStr := centsToMoneyString(moneyToCents(req.Amount))
+	amountStr := util.CentsToMoneyString(util.MoneyToCents(req.Amount))
 	nudge, err := h.Q.CreateNudge(ctx, sqlcdb.CreateNudgeParams{
 		GroupID:    groupID,
 		SenderID:   sqlcutil.UUID(uid),
@@ -125,7 +126,7 @@ func (h *NudgesHandler) Create(c *gin.Context) {
 			h.Q,
 			receiver,
 			"💸 Payment Reminder",
-			senderName+" nudged you about ₱"+centsToMoneyString(moneyToCents(amount)),
+			senderName+" nudged you about ₱"+util.CentsToMoneyString(util.MoneyToCents(amount)),
 		)
 	}(uid, debtorID, req.Amount)
 
@@ -173,7 +174,7 @@ func (h *NudgesHandler) ListMine(c *gin.Context) {
 			GroupName:  n.GroupName,
 			SenderID:   sqlcutil.UUIDToString(n.SenderID),
 			SenderName: senderName,
-			Amount:     mustMoneyToFloat(n.Amount),
+			Amount:     util.MustMoneyToFloat(n.Amount),
 			Message:    msg,
 			Read:       n.Read,
 			CreatedAt:  createdAt,

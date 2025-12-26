@@ -1,4 +1,5 @@
-import { Check, LogIn, MapPin, Plus, User as UserIcon } from 'lucide-react'
+import { useState, useLayoutEffect, useCallback } from 'react'
+import { Check, LogIn, MapPin, Plus, User as UserIcon, Users } from 'lucide-react'
 
 import type { Group, User } from '../../types'
 
@@ -11,6 +12,7 @@ type Props = {
   onCreateGroup: () => void
   onJoinGroup: () => void
   onOpenProfile: () => void
+  onOpenMembers: () => void
   currentUser: User
 }
 
@@ -21,6 +23,7 @@ type SideMenuContentProps = {
   onCreateGroup: () => void
   onJoinGroup: () => void
   onOpenProfile: () => void
+  onOpenMembers: () => void
   currentUser: User
   className?: string
 }
@@ -32,6 +35,7 @@ export function SideMenuContent({
   onCreateGroup,
   onJoinGroup,
   onOpenProfile,
+  onOpenMembers,
   currentUser,
   className = '',
 }: SideMenuContentProps) {
@@ -60,16 +64,14 @@ export function SideMenuContent({
             onClick={() => {
               onSelectGroup(group)
             }}
-            className={`w-full text-left p-3 rounded-xl border transition-all flex items-center gap-3 group/item ${
-              currentGroupId === group.id
-                ? 'bg-[#dfff4f]/10 border-[#dfff4f]/50 text-white shadow-[0_0_15px_rgba(223,255,79,0.1)]'
-                : 'bg-transparent border-transparent hover:bg-white/5 text-gray-400 hover:text-gray-200'
-            }`}
+            className={`w-full text-left p-3 rounded-xl border transition-all flex items-center gap-3 group/item ${currentGroupId === group.id
+              ? 'bg-[#dfff4f]/10 border-[#dfff4f]/50 text-white shadow-[0_0_15px_rgba(223,255,79,0.1)]'
+              : 'bg-transparent border-transparent hover:bg-white/5 text-gray-400 hover:text-gray-200'
+              }`}
           >
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                currentGroupId === group.id ? 'bg-[#dfff4f] text-black' : 'bg-[#1c1c21] text-gray-500 group-hover/item:text-gray-300'
-              }`}
+              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${currentGroupId === group.id ? 'bg-[#dfff4f] text-black' : 'bg-[#1c1c21] text-gray-500 group-hover/item:text-gray-300'
+                }`}
             >
               <MapPin size={14} />
             </div>
@@ -77,7 +79,7 @@ export function SideMenuContent({
               <div className={`font-bold text-sm truncate ${currentGroupId === group.id ? 'text-[#dfff4f]' : 'text-gray-300'}`}>
                 {group.name}
               </div>
-              <div className="text-[10px] truncate opacity-60">{group.members?.length || 0} Members</div>
+              <div className="text-[10px] truncate opacity-60">{group.memberCount ?? group.members?.length ?? 0} Members</div>
             </div>
             {currentGroupId === group.id && <Check size={14} className="ml-auto text-[#dfff4f]" />}
           </button>
@@ -89,28 +91,37 @@ export function SideMenuContent({
           onClick={onCreateGroup}
           className="w-full text-left p-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors flex items-center gap-3 text-xs font-bold font-mono uppercase tracking-wide group"
         >
-           <div className="w-8 h-8 rounded-full bg-[#1c1c21] flex items-center justify-center text-gray-500 group-hover:text-white transition-colors border border-white/5">
-             <Plus size={14} /> 
-           </div>
-           New Group
+          <div className="w-8 h-8 rounded-full bg-[#1c1c21] flex items-center justify-center text-gray-500 group-hover:text-white transition-colors border border-white/5">
+            <Plus size={14} />
+          </div>
+          New Group
         </button>
         <button
           onClick={onJoinGroup}
           className="w-full text-left p-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors flex items-center gap-3 text-xs font-bold font-mono uppercase tracking-wide group"
         >
-           <div className="w-8 h-8 rounded-full bg-[#1c1c21] flex items-center justify-center text-gray-500 group-hover:text-white transition-colors border border-white/5">
-             <LogIn size={14} /> 
-           </div>
-           Join Group
+          <div className="w-8 h-8 rounded-full bg-[#1c1c21] flex items-center justify-center text-gray-500 group-hover:text-white transition-colors border border-white/5">
+            <LogIn size={14} />
+          </div>
+          Join Group
+        </button>
+        <button
+          onClick={onOpenMembers}
+          className="w-full text-left p-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors flex items-center gap-3 text-xs font-bold font-mono uppercase tracking-wide group"
+        >
+          <div className="w-8 h-8 rounded-full bg-[#1c1c21] flex items-center justify-center text-gray-500 group-hover:text-white transition-colors border border-white/5">
+            <Users size={14} />
+          </div>
+          Group Members
         </button>
         <button
           onClick={onOpenProfile}
           className="w-full text-left p-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors flex items-center gap-3 text-xs font-bold font-mono uppercase tracking-wide group"
         >
-           <div className="w-8 h-8 rounded-full bg-[#1c1c21] flex items-center justify-center text-gray-500 group-hover:text-white transition-colors border border-white/5">
-             <UserIcon size={14} /> 
-           </div>
-           My Profile
+          <div className="w-8 h-8 rounded-full bg-[#1c1c21] flex items-center justify-center text-gray-500 group-hover:text-white transition-colors border border-white/5">
+            <UserIcon size={14} />
+          </div>
+          My Profile
         </button>
       </div>
     </div>
@@ -122,33 +133,59 @@ export function SideMenu({
   onClose,
   ...contentProps
 }: Props) {
-  if (!isOpen) return null
+  const [isClosing, setIsClosing] = useState(false)
+  const [shouldRender, setShouldRender] = useState(false)
+
+  useLayoutEffect(() => {
+    if (isOpen) {
+      setShouldRender(true)
+      setIsClosing(false)
+    }
+  }, [isOpen])
+
+  const handleClose = useCallback(() => {
+    setIsClosing(true)
+    // Wait for animation to complete before actually closing
+    setTimeout(() => {
+      setShouldRender(false)
+      setIsClosing(false)
+      onClose()
+    }, 280) // Slightly less than animation duration to prevent flash
+  }, [onClose])
+
+  if (!shouldRender && !isOpen) return null
 
   return (
     <div className="absolute inset-0 z-50 flex">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-[80%] max-w-xs h-full bg-[#131316] border-r border-white/10 shadow-2xl animate-slide-in-left">
+      <div
+        className={`absolute inset-0 bg-black/80 backdrop-blur-sm ${isClosing ? 'animate-fade-out' : ''}`}
+        onClick={handleClose}
+      />
+      <div className={`relative w-[80%] max-w-xs h-full bg-[#131316] border-r border-white/10 shadow-2xl ${isClosing ? 'animate-slide-out-left' : 'animate-slide-in-left'}`}>
         <SideMenuContent
           {...contentProps}
           onSelectGroup={(g) => {
             contentProps.onSelectGroup(g)
-            onClose()
+            handleClose()
           }}
           onCreateGroup={() => {
             contentProps.onCreateGroup()
-            onClose()
+            handleClose()
           }}
           onJoinGroup={() => {
             contentProps.onJoinGroup()
-            onClose()
+            handleClose()
           }}
           onOpenProfile={() => {
             contentProps.onOpenProfile()
-            onClose()
+            handleClose()
+          }}
+          onOpenMembers={() => {
+            contentProps.onOpenMembers()
+            handleClose()
           }}
         />
       </div>
     </div>
   )
 }
-

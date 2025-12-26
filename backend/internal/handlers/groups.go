@@ -4,15 +4,20 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base32"
+	"fmt"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Skufu/PayUp/internal/auth"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
 	"github.com/Skufu/PayUp/internal/db/sqlcutil"
+	"github.com/Skufu/PayUp/internal/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -29,9 +34,10 @@ type createGroupRequest struct {
 }
 
 type groupResponse struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	CreatedAt   time.Time `json:"createdAt"`
+	MemberCount int64     `json:"memberCount"`
 }
 
 type groupMemberResponse struct {
@@ -65,6 +71,7 @@ func (h *GroupsHandler) List(c *gin.Context) {
 
 	rows, err := h.Q.ListGroupsForUser(ctx, sqlcutil.UUID(uid))
 	if err != nil {
+		logger.DBError("ListGroupsForUser", err, logger.Fields{"user_id": uid.String()})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list groups"})
 		return
 	}
@@ -73,9 +80,10 @@ func (h *GroupsHandler) List(c *gin.Context) {
 	for _, g := range rows {
 		createdAt, _ := sqlcutil.Time(g.CreatedAt)
 		out = append(out, groupResponse{
-			ID:        sqlcutil.UUIDToString(g.ID),
-			Name:      g.Name,
-			CreatedAt: createdAt,
+			ID:          sqlcutil.UUIDToString(g.ID),
+			Name:        g.Name,
+			CreatedAt:   createdAt,
+			MemberCount: g.MemberCount,
 		})
 	}
 
@@ -105,6 +113,7 @@ func (h *GroupsHandler) Create(c *gin.Context) {
 
 	tx, err := h.Pool.Begin(ctx)
 	if err != nil {
+		logger.DBError("BeginTx", err, logger.Fields{"operation": "CreateGroup"})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create group"})
 		return
 	}
@@ -116,6 +125,7 @@ func (h *GroupsHandler) Create(c *gin.Context) {
 		CreatedBy: sqlcutil.UUID(uid),
 	})
 	if err != nil {
+		logger.DBError("CreateGroup", err, logger.Fields{"name": name})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create group"})
 		return
 	}
@@ -125,11 +135,13 @@ func (h *GroupsHandler) Create(c *gin.Context) {
 		UserID:  sqlcutil.UUID(uid),
 		Role:    "owner",
 	}); err != nil {
+		logger.DBError("AddGroupMember", err, logger.Fields{"group_id": sqlcutil.UUIDToString(created.ID)})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create group"})
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
+		logger.DBError("CommitTx", err, logger.Fields{"operation": "CreateGroup"})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create group"})
 		return
 	}
@@ -176,6 +188,7 @@ func (h *GroupsHandler) Detail(c *gin.Context) {
 
 	rows, err := h.Q.ListGroupMembers(ctx, groupID)
 	if err != nil {
+		logger.DBError("ListGroupMembers", err, logger.Fields{"group_id": gid.String()})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load members"})
 		return
 	}
@@ -250,6 +263,7 @@ func (h *GroupsHandler) CreateInvite(c *gin.Context) {
 		CreatedBy: sqlcutil.UUID(uid),
 		ExpiresAt: sqlcutil.NullTimestamptz(expiresAt),
 	}); err != nil {
+		logger.DBError("CreateInvite", err, logger.Fields{"group_id": gid.String()})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create invite"})
 		return
 	}
@@ -295,6 +309,7 @@ func (h *GroupsHandler) JoinByCode(c *gin.Context) {
 	// Check member limit
 	count, err := h.Q.CountGroupMembers(ctx, inv.GroupID)
 	if err != nil {
+		logger.DBError("CountGroupMembers", err, logger.Fields{"group_id": sqlcutil.UUIDToString(inv.GroupID)})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to join group"})
 		return
 	}
@@ -308,9 +323,13 @@ func (h *GroupsHandler) JoinByCode(c *gin.Context) {
 		UserID:  sqlcutil.UUID(uid),
 		Role:    "member",
 	}); err != nil {
+		logger.DBError("AddGroupMember", err, logger.Fields{"group_id": sqlcutil.UUIDToString(inv.GroupID), "user_id": uid.String()})
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to join group"})
 		return
 	}
+
+	// Log activity
+	_ = LogActivity(ctx, h.Q, inv.GroupID, uid, "member_joined", "A new member joined the group", nil)
 
 	c.JSON(http.StatusOK, gin.H{"groupId": sqlcutil.UUIDToString(inv.GroupID)})
 }
@@ -345,4 +364,122 @@ func randomInviteCode(n int) string {
 		n = len(enc)
 	}
 	return enc[:n]
+}
+
+func (h *GroupsHandler) Leave(c *gin.Context) {
+	uid, ok := mustUserID(c)
+	if !ok {
+		return
+	}
+
+	gid, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
+		return
+	}
+	groupID := sqlcutil.UUID(gid)
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	// Check if user has zero balance
+	if err := h.ensureZeroBalance(ctx, groupID, uid); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = h.Q.LeaveGroup(ctx, sqlcdb.LeaveGroupParams{
+		GroupID: groupID,
+		UserID:  sqlcutil.UUID(uid),
+	})
+	if err != nil {
+		logger.DBError("LeaveGroup", err, logger.Fields{"group_id": gid.String(), "user_id": uid.String()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to leave group"})
+		return
+	}
+
+	// Log activity
+	_ = LogActivity(ctx, h.Q, groupID, uid, "member_left", "A member left the group", nil)
+
+	c.Status(http.StatusNoContent)
+}
+
+func (h *GroupsHandler) RemoveMember(c *gin.Context) {
+	uid, ok := mustUserID(c)
+	if !ok {
+		return
+	}
+
+	gid, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
+		return
+	}
+	groupID := sqlcutil.UUID(gid)
+
+	targetUID, err := uuid.Parse(c.Param("userId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	// Authz: requester must be admin
+	role, err := h.Q.GetMemberRole(ctx, sqlcdb.GetMemberRoleParams{
+		GroupID: groupID,
+		UserID:  sqlcutil.UUID(uid),
+	})
+	if err != nil || role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only admins can remove members"})
+		return
+	}
+
+	// Check if target has zero balance
+	if err := h.ensureZeroBalance(ctx, groupID, targetUID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "member " + err.Error()})
+		return
+	}
+
+	err = h.Q.LeaveGroup(ctx, sqlcdb.LeaveGroupParams{
+		GroupID: groupID,
+		UserID:  sqlcutil.UUID(targetUID),
+	})
+	if err != nil {
+		logger.DBError("LeaveGroup", err, logger.Fields{"group_id": gid.String(), "target_user_id": targetUID.String()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to remove member"})
+		return
+	}
+
+	// Log activity
+	targetUser, _ := h.Q.GetUserPublicProfile(ctx, sqlcutil.UUID(targetUID))
+	targetName := "a member"
+	if targetUser.Name != nil {
+		targetName = *targetUser.Name
+	}
+	_ = LogActivity(ctx, h.Q, groupID, uid, "member_removed", fmt.Sprintf("%s was removed from the group", targetName), nil)
+
+	c.Status(http.StatusNoContent)
+}
+
+func (h *GroupsHandler) ensureZeroBalance(ctx context.Context, groupID pgtype.UUID, userID uuid.UUID) error {
+	rows, err := h.Q.ComputeBalancesByGroup(ctx, groupID)
+	if err != nil {
+		return err
+	}
+
+	for _, row := range rows {
+		u, ok := sqlcutil.UUIDToUUID(row.UserID)
+		if ok && u == userID {
+			bal, err := strconv.ParseFloat(row.Balance, 64)
+			if err != nil {
+				return err
+			}
+			if math.Abs(bal) > 0.01 {
+				return fmt.Errorf("must settle balance first")
+			}
+		}
+	}
+	return nil
 }

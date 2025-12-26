@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,29 +15,24 @@ import (
 	"github.com/Skufu/PayUp/internal/config"
 	"github.com/Skufu/PayUp/internal/db"
 	"github.com/Skufu/PayUp/internal/db/sqlcdb"
+	"github.com/Skufu/PayUp/internal/logger"
 	"github.com/Skufu/PayUp/internal/server"
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv" // ADD THIS
 )
 
 func main() {
-	// Load .env file - ADD THIS BLOCK
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using environment variables")
-	}
-
-	// Force Gin out of debug mode, regardless of GIN_MODE from .env/env-vars.
-	gin.SetMode(gin.ReleaseMode)
+	// Initialize logger early
+	logger.Init()
 
 	cfg := config.Load()
 	if cfg.JWTSecret == "" {
 		cfg.JWTSecret = randomDevSecret()
-		log.Printf("warning: JWT_SECRET not set; using ephemeral dev secret")
+		logger.Warn("JWT_SECRET not set; using ephemeral dev secret")
 	}
 
 	pool, err := db.NewPool(context.Background(), cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("db: %v", err)
+		logger.Error("database connection failed", logger.Fields{"error": err.Error()})
+		os.Exit(1)
 	}
 	defer pool.Close()
 
@@ -63,7 +57,7 @@ func main() {
 
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("api listening on http://localhost:%s", cfg.Port)
+		logger.Info("api started", logger.Fields{"port": cfg.Port, "addr": "http://localhost:" + cfg.Port})
 		errCh <- srv.ListenAndServe()
 	}()
 
@@ -72,10 +66,11 @@ func main() {
 
 	select {
 	case sig := <-stop:
-		log.Printf("shutting down (%s)...", sig.String())
+		logger.Info("shutdown initiated", logger.Fields{"signal": sig.String()})
 	case err := <-errCh:
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("server error: %v", err)
+			logger.Error("server error", logger.Fields{"error": err.Error()})
+			os.Exit(1)
 		}
 		return
 	}
@@ -83,7 +78,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("graceful shutdown failed: %v", err)
+		logger.Error("graceful shutdown failed", logger.Fields{"error": err.Error()})
 	}
 }
 
