@@ -51,11 +51,11 @@ func New(deps Deps) *gin.Engine {
 		r.Use(middleware.EnforceHTTPS())
 	}
 
-	r.GET("/", func(c *gin.Context) {
+	r.Match([]string{"GET", "HEAD"}, "/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	r.GET("/health", func(c *gin.Context) {
+	r.Match([]string{"GET", "HEAD"}, "/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
