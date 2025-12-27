@@ -1,15 +1,25 @@
-name: ci
+name: CI
 
 on:
   push:
     branches: ["**"]
   pull_request:
+    branches: [main]
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.23"
+  NODE_VERSION: "22"
+
 jobs:
   backend:
+    name: Backend
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,41 +31,48 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: backend/go.mod
+          go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: backend/go.sum
 
-      - name: gofmt check
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Check formatting
         run: |
           if [ -n "$(gofmt -l .)" ]; then
-            echo "The following files are not formatted:"
+            echo "::error::The following files are not formatted:"
             gofmt -l .
             echo "Run 'gofmt -w .' to fix"
             exit 1
           fi
 
-      - name: go vet
-        run: |
-          go vet ./...
+      - name: Run go vet
+        run: go vet ./...
 
-      - name: sqlc generate check
+      - name: Run staticcheck
+        uses: dominikh/staticcheck-action@v1
+        with:
+          version: "latest"
+          install-go: false
+          working-directory: backend
+
+      - name: Verify sqlc generated code
         run: |
           go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate -f sqlc.yaml
-          git diff --exit-code
+          git diff --exit-code || (echo "::error::sqlc generated code is out of date. Run 'sqlc generate' and commit." && exit 1)
 
-      - name: go test
-        run: |
-          go test -v -race -coverprofile=coverage.out ./...
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
-      - name: go build
-        run: |
-          go build -v ./...
+      - name: Build
+        run: go build -v ./...
 
       - name: Docker build
         working-directory: ${{ github.workspace }}
-        run: |
-          docker build -t payup-api:test -f Dockerfile .
+        run: docker build -t payup-api:${{ github.sha }} -f Dockerfile .
 
   frontend:
+    name: Frontend
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -64,19 +81,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.12.0"
-          cache: "npm"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install
+      - name: Install dependencies
         run: npm ci
 
-      - name: Lint
+      - name: Run linter
         run: npm run lint
+
+      - name: Type check
+        run: npm run build -- --mode production
 
       - name: Build
         run: npm run build
-
+        env:
+          NODE_ENV: production

@@ -1,55 +1,94 @@
-name: deploy
+name: Deploy
 
 on:
   push:
-    branches: ["main"]
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
+  deployments: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  deploy-render:
-    runs-on: ubuntu-latest
-    env:
-      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-    steps:
-      - name: Trigger Render deploy hook
-        if: ${{ env.RENDER_DEPLOY_HOOK_URL != '' }}
-        run: |
-          curl -fsSL -X POST "$RENDER_DEPLOY_HOOK_URL"
-      - name: Render deploy hook not configured
-        if: ${{ env.RENDER_DEPLOY_HOOK_URL == '' }}
-        run: |
-          echo "Skipping Render deploy: RENDER_DEPLOY_HOOK_URL secret not set."
+  # Ensure CI passes before deploying
+  ci:
+    uses: ./.github/workflows/ci.yml
 
-  deploy-vercel:
+  deploy-backend:
+    name: Deploy Backend (Render)
+    needs: ci
     runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.BACKEND_URL }}
+    steps:
+      - name: Trigger Render deploy
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        run: |
+          response=$(curl -fsSL -w "%{http_code}" -o /dev/null -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}")
+          if [ "$response" -ne 200 ] && [ "$response" -ne 201 ]; then
+            echo "::error::Render deploy failed with status $response"
+            exit 1
+          fi
+          echo "✅ Render deploy triggered successfully"
+
+      - name: Skip - Not configured
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL == '' }}
+        run: echo "::warning::Skipping Render deploy - RENDER_DEPLOY_HOOK_URL secret not set"
+
+  deploy-frontend:
+    name: Deploy Frontend (Vercel)
+    needs: ci
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.FRONTEND_URL }}
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
+      - name: Check Vercel configuration
+        id: check
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "::warning::Skipping Vercel deploy - required secrets not set"
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout
+        if: steps.check.outputs.configured == 'true'
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != '' }}
+      - name: Setup Node.js
+        if: steps.check.outputs.configured == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: "22.12.0"
+          node-version: "22"
 
       - name: Install Vercel CLI
-        if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != '' }}
+        if: steps.check.outputs.configured == 'true'
         run: npm i -g vercel@latest
 
-      - name: Deploy (prod)
-        if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != '' }}
+      - name: Pull Vercel environment
+        if: steps.check.outputs.configured == 'true'
+        working-directory: frontend
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build project
+        if: steps.check.outputs.configured == 'true'
+        working-directory: frontend
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy to Vercel
+        if: steps.check.outputs.configured == 'true'
         working-directory: frontend
         run: |
-          vercel deploy --prod --yes --token "$VERCEL_TOKEN"
-
-      - name: Vercel deploy not configured
-        if: ${{ env.VERCEL_TOKEN == '' || env.VERCEL_ORG_ID == '' || env.VERCEL_PROJECT_ID == '' }}
-        run: |
-          echo "Skipping Vercel deploy: required Vercel secrets not set."
-
+          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          echo "✅ Deployed to: $url"
