@@ -225,7 +225,7 @@ export const AppShell = memo(function AppShell({
               onClick={handleNotificationsTab}
               badge={notificationCount}
             />
-            <NavIcon icon={QrCode} label="QR" onClick={onOpenMyQr} />
+            <NavIcon icon={Share2} label="Share" onClick={onOpenInvite} />
           </div>
         </div>
       </div>
