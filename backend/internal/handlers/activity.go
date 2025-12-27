@@ -79,7 +79,6 @@ func (h *ActivityHandler) ListByGroup(c *gin.Context) {
 		}
 	}
 
-
 	c.JSON(http.StatusOK, res)
 }
 

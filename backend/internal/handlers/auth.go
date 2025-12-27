@@ -52,14 +52,14 @@ type paymentQRResponse struct {
 }
 
 type userResponse struct {
-	ID         string               `json:"id"`
-	Email      string               `json:"email"`
-	Name       *string              `json:"name,omitempty"`
-	AvatarURL  *string              `json:"avatarUrl,omitempty"`
-	QRURL      *string              `json:"qrUrl,omitempty"` // Legacy field
-	PaymentQRs []paymentQRResponse  `json:"paymentQRs,omitempty"`
-	CreatedAt  time.Time            `json:"createdAt"`
-	UpdatedAt  time.Time            `json:"updatedAt"`
+	ID         string              `json:"id"`
+	Email      string              `json:"email"`
+	Name       *string             `json:"name,omitempty"`
+	AvatarURL  *string             `json:"avatarUrl,omitempty"`
+	QRURL      *string             `json:"qrUrl,omitempty"` // Legacy field
+	PaymentQRs []paymentQRResponse `json:"paymentQRs,omitempty"`
+	CreatedAt  time.Time           `json:"createdAt"`
+	UpdatedAt  time.Time           `json:"updatedAt"`
 }
 
 type authResponse struct {
@@ -387,7 +387,6 @@ func (h *AuthHandler) GetUserPublicProfile(c *gin.Context) {
 		"paymentQRs": paymentQRs,
 	})
 }
-
 
 type googleAuthRequest struct {
 	IDToken string `json:"idToken"`

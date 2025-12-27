@@ -88,7 +88,7 @@ func New(deps Deps) *gin.Engine {
 		authProfile := v1.Group("/auth")
 		authProfile.GET("/me", auth.Middleware(deps.Issuer), ah.Me)
 		authProfile.PATCH("/profile", auth.Middleware(deps.Issuer), ah.UpdateProfile)
-		
+
 		// Payment QR management
 		paymentQRGroup := authProfile.Group("/payment-qr")
 		paymentQRGroup.Use(auth.Middleware(deps.Issuer))
@@ -97,7 +97,7 @@ func New(deps Deps) *gin.Engine {
 			paymentQRGroup.POST("", ah.AddPaymentQR)
 			paymentQRGroup.DELETE("/:id", ah.DeletePaymentQR)
 			paymentQRGroup.PATCH("/:id/primary", ah.SetPrimaryPaymentQR)
-		paymentQRGroup.PATCH("/:id/phone", ah.UpdatePaymentQRPhone)
+			paymentQRGroup.PATCH("/:id/phone", ah.UpdatePaymentQRPhone)
 		}
 
 		v1.GET("/users/:id/profile", auth.Middleware(deps.Issuer), middleware.ProfileRateLimit(), ah.GetUserPublicProfile)

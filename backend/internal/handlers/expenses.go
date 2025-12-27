@@ -20,7 +20,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-
 type ExpensesHandler struct {
 	Pool *pgxpool.Pool
 	Q    *sqlcdb.Queries
@@ -41,9 +40,9 @@ type expenseResponse struct {
 }
 
 type createExpenseRequest struct {
-	Title   string             `json:"title"`
-	Amount  float64            `json:"amount"`
-	PayerID string             `json:"payerId"`
+	Title    string             `json:"title"`
+	Amount   float64            `json:"amount"`
+	PayerID  string             `json:"payerId"`
 	Mode     *string            `json:"mode"`
 	Type     *string            `json:"type"`
 	Category *string            `json:"category"`
