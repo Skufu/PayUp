@@ -5,24 +5,25 @@ interface NetworkBackgroundProps {
     className?: string
 }
 
+// Generate initial nodes outside of component to avoid re-creation
+const generateInitialNodes = () =>
+    Array.from({ length: 12 }, () => ({
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+    }))
+
 export function NetworkBackground({ className = '' }: NetworkBackgroundProps) {
-    const [nodes, setNodes] = useState<{ x: number; y: number }[]>([])
+    // Use lazy initializer to generate nodes once on mount
+    const [nodes] = useState<{ x: number; y: number }[]>(generateInitialNodes)
     const [transactions, setTransactions] = useState<{ id: number; start: number; end: number }[]>([])
 
     useEffect(() => {
-        // Generate fewer static nodes for better performance
-        const newNodes = Array.from({ length: 12 }, () => ({
-            x: Math.random() * 100,
-            y: Math.random() * 100,
-        }))
-        setNodes(newNodes)
-
         // Simulate transactions less frequently for better performance
         const interval = setInterval(() => {
-            if (newNodes.length < 2) return
-            const start = Math.floor(Math.random() * newNodes.length)
-            let end = Math.floor(Math.random() * newNodes.length)
-            while (end === start) end = Math.floor(Math.random() * newNodes.length)
+            if (nodes.length < 2) return
+            const start = Math.floor(Math.random() * nodes.length)
+            let end = Math.floor(Math.random() * nodes.length)
+            while (end === start) end = Math.floor(Math.random() * nodes.length)
 
             const id = Date.now()
             setTransactions((prev) => [...prev, { id, start, end }])
@@ -34,7 +35,7 @@ export function NetworkBackground({ className = '' }: NetworkBackgroundProps) {
         }, 1000) // Reduced from 500ms to 1000ms
 
         return () => clearInterval(interval)
-    }, [])
+    }, [nodes.length])
 
     return (
         <div className={`fixed inset-0 z-0 overflow-hidden pointer-events-none ${className}`}>
