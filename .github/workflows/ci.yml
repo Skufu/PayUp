@@ -5,6 +5,7 @@ on:
     branches: ["**"]
   pull_request:
     branches: [main]
+  workflow_call:
 
 permissions:
   contents: read
@@ -93,9 +94,6 @@ jobs:
 
       - name: Run linter
         run: npm run lint
-
-      - name: Type check
-        run: npm run build -- --mode production
 
       - name: Build
         run: npm run build

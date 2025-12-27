@@ -14,7 +14,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Ensure CI passes before deploying
   ci:
     uses: ./.github/workflows/ci.yml
 
@@ -22,14 +21,13 @@ jobs:
     name: Deploy Backend (Render)
     needs: ci
     runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: ${{ vars.BACKEND_URL }}
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
     steps:
       - name: Trigger Render deploy
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
         run: |
-          response=$(curl -fsSL -w "%{http_code}" -o /dev/null -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}")
+          response=$(curl -fsSL -w "%{http_code}" -o /dev/null -X POST "$RENDER_DEPLOY_HOOK_URL")
           if [ "$response" -ne 200 ] && [ "$response" -ne 201 ]; then
             echo "::error::Render deploy failed with status $response"
             exit 1
@@ -37,16 +35,13 @@ jobs:
           echo "✅ Render deploy triggered successfully"
 
       - name: Skip - Not configured
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL == '' }}
+        if: env.RENDER_DEPLOY_HOOK_URL == ''
         run: echo "::warning::Skipping Render deploy - RENDER_DEPLOY_HOOK_URL secret not set"
 
   deploy-frontend:
     name: Deploy Frontend (Vercel)
     needs: ci
     runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: ${{ vars.FRONTEND_URL }}
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
