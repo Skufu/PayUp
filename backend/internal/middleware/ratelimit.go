@@ -212,3 +212,14 @@ func RefreshRateLimit() gin.HandlerFunc {
 		RetryAfter: 900,
 	})
 }
+
+// ProfileRateLimit for user profile access (100 lookups per hour)
+// Prevents scraping of user data including phone numbers
+func ProfileRateLimit() gin.HandlerFunc {
+	return rateLimitMiddleware(RateLimitConfig{
+		Rate:       100,
+		Period:     time.Hour,
+		ErrorMsg:   "profile lookup rate limit exceeded",
+		RetryAfter: 3600,
+	})
+}

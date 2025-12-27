@@ -21,6 +21,8 @@ func NewPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 	}
 	cfg.MaxConnLifetime = 30 * time.Minute
 	cfg.MaxConnIdleTime = 5 * time.Minute
+	cfg.MinConns = 5                     // Keep some connections warm
+	cfg.HealthCheckPeriod = 30 * time.Second
 
 	// Default to 25 connections, configurable via DB_MAX_CONNS
 	maxConns := 25

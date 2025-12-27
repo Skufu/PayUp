@@ -1,10 +1,11 @@
-import { AlertCircle, Camera, CheckCircle, Copy, QrCode, X, Trash2, Check } from 'lucide-react'
+import { AlertCircle, Camera, CheckCircle, Copy, QrCode, X, Trash2, Check, Loader2 } from 'lucide-react'
 import { useRef, useState, useEffect } from 'react'
 
 import { api, type PaymentQR } from '../../api/endpoints'
 import type { ApiError } from '../../api/client'
 import type { User } from '../../types'
 import { PAYMENT_PROVIDERS } from '../../constants/PaymentProviders'
+import { compressImage, formatFileSize } from '../../utils/imageCompression'
 
 type Props = {
   isOpen: boolean
@@ -33,6 +34,8 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null)
 
   const [saving, setSaving] = useState(false)
+  const [compressing, setCompressing] = useState(false)
+  const [compressionProgress, setCompressionProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
@@ -52,15 +55,34 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
     }
   }, [currentUser.paymentQRs])
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) return
-    if (file.size > 5 * 1024 * 1024) return
-    setAvatarFile(file)
-    const reader = new FileReader()
-    reader.onload = () => setAvatarPreview(String(reader.result ?? ''))
-    reader.readAsDataURL(file)
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file')
+      return
+    }
+
+    try {
+      setCompressing(true)
+      setError(null)
+      console.log(`Original avatar: ${formatFileSize(file.size)}`)
+
+      // Compress the image
+      const compressedFile = await compressImage(file, 'avatar', setCompressionProgress)
+      console.log(`Compressed avatar: ${formatFileSize(compressedFile.size)}`)
+
+      setAvatarFile(compressedFile)
+      const reader = new FileReader()
+      reader.onload = () => setAvatarPreview(String(reader.result ?? ''))
+      reader.readAsDataURL(compressedFile)
+    } catch (err) {
+      console.error('Avatar compression error:', err)
+      setError('Failed to process image')
+    } finally {
+      setCompressing(false)
+      setCompressionProgress(0)
+    }
   }
 
   const handleQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,15 +91,26 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
     if (!file) return
 
     try {
+      setCompressing(true)
+      setError(null)
+      console.log(`Original QR: ${formatFileSize(file.size)}`)
+
+      // Compress the image
+      const compressedFile = await compressImage(file, 'qr', setCompressionProgress)
+      console.log(`Compressed QR: ${formatFileSize(compressedFile.size)}`)
+
+      setCompressing(false)
       setSaving(true)
       const phoneNumber = phoneNumbers[uploadingQR]
-      const newQR = await api.addPaymentQR(uploadingQR, file, phoneNumber || undefined)
+      const newQR = await api.addPaymentQR(uploadingQR, compressedFile, phoneNumber || undefined)
       setUserQRs(prev => [...prev.filter(q => q.provider !== uploadingQR), newQR])
       setSuccess(true)
       setTimeout(() => setSuccess(false), 2000)
     } catch {
       setError('Failed to upload QR')
     } finally {
+      setCompressing(false)
+      setCompressionProgress(0)
       setSaving(false)
       setUploadingQR(null)
     }
@@ -134,18 +167,26 @@ export function ProfileModal({ isOpen, onClose, currentUser, onUpdateProfile }: 
           </button>
           <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
             <div
-              className={`w-20 h-20 rounded-full ${avatarPreview ? '' : currentUser.color} flex items-center justify-center text-3xl font-bold text-black border-[4px] border-[#131316] shadow-xl overflow-hidden cursor-pointer`}
-              onClick={() => avatarInputRef.current?.click()}
+              className={`w-20 h-20 rounded-full ${avatarPreview ? '' : currentUser.color} flex items-center justify-center text-3xl font-bold text-black border-[4px] border-[#131316] shadow-xl overflow-hidden cursor-pointer relative`}
+              onClick={() => !compressing && avatarInputRef.current?.click()}
             >
               {avatarPreview ? (
                 <img src={avatarPreview} alt="Avatar preview" className="w-full h-full object-cover" />
               ) : currentUser.avatar}
+              {/* Compression overlay */}
+              {compressing && (
+                <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-1">
+                  <Loader2 size={20} className="animate-spin text-[#dfff4f]" />
+                  <span className="text-[8px] text-white font-mono">{compressionProgress}%</span>
+                </div>
+              )}
             </div>
             <button
-              onClick={() => avatarInputRef.current?.click()}
-              className="absolute bottom-0 right-0 p-1.5 bg-[#dfff4f] rounded-full text-black hover:scale-110 transition-transform shadow-lg border border-[#131316]"
+              onClick={() => !compressing && avatarInputRef.current?.click()}
+              disabled={compressing}
+              className="absolute bottom-0 right-0 p-1.5 bg-[#dfff4f] rounded-full text-black hover:scale-110 transition-transform shadow-lg border border-[#131316] disabled:opacity-50 disabled:hover:scale-100"
             >
-              <Camera size={12} />
+              {compressing ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
             </button>
             <input
               ref={avatarInputRef}

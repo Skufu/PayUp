@@ -43,8 +43,8 @@ func (h *BalancesHandler) GetByGroup(c *gin.Context) {
 		return
 	}
 
-	// Use optimized SQL query that computes balances in the database
-	rows, err := h.Q.ComputeBalancesByGroup(ctx, groupID)
+	// Use optimized SQL query that computes balances and includes all members in one query
+	rows, err := h.Q.ComputeBalancesByGroupWithAllMembers(ctx, groupID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to compute balances"})
 		return
@@ -59,17 +59,6 @@ func (h *BalancesHandler) GetByGroup(c *gin.Context) {
 			balance = 0
 		}
 		balances[userID] = balance
-	}
-
-	// Ensure all members have an entry (even if balance is 0)
-	members, err := h.Q.ListGroupMemberIDs(ctx, groupID)
-	if err == nil {
-		for _, mid := range members {
-			userID := sqlcutil.UUIDToString(mid)
-			if _, exists := balances[userID]; !exists {
-				balances[userID] = 0
-			}
-		}
 	}
 
 	c.JSON(http.StatusOK, balances)

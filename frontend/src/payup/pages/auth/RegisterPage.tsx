@@ -7,6 +7,7 @@ import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 import type { ApiError } from '../../api/client'
 import { useAuth } from '../../auth/useAuth'
 import { PWAInstallGuide } from '../../components/PWAInstallGuide'
+import { NetworkBackground } from '../../components/NetworkBackground'
 import { markPWAGuideAsShown, useShouldShowPWAGuide } from '../../pwa/pwaGuide'
 
 export function RegisterPage() {
@@ -69,12 +70,8 @@ export function RegisterPage() {
   return (
     <div className="min-h-screen bg-[#050507] text-[#f0f0f0] flex items-center justify-center px-4 font-mono relative overflow-hidden">
 
-      {/* Background Ambience */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#dfff4f]/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#ff4f99]/5 rounded-full blur-[120px]" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
-      </div>
+      {/* Animated Network Background */}
+      <NetworkBackground />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}

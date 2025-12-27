@@ -48,11 +48,14 @@ export function useGroupEvents(groupId: string | null) {
                     case 'expense_deleted':
                         queryClient.invalidateQueries({ queryKey: ['expenses', groupId] })
                         queryClient.invalidateQueries({ queryKey: ['balances', groupId] })
+                        queryClient.invalidateQueries({ queryKey: ['activity', groupId] })
                         break
                     case 'payment_created':
                     case 'payment_updated':
-                        queryClient.invalidateQueries({ queryKey: ['payments'] })
+                        // Use specific key to only invalidate pending payments
+                        queryClient.invalidateQueries({ queryKey: ['payments', 'pending'] })
                         queryClient.invalidateQueries({ queryKey: ['balances', groupId] })
+                        queryClient.invalidateQueries({ queryKey: ['activity', groupId] })
                         break
                     case 'nudge_received':
                         queryClient.invalidateQueries({ queryKey: ['nudges'] })
@@ -60,6 +63,7 @@ export function useGroupEvents(groupId: string | null) {
                         break
                     case 'member_joined':
                         queryClient.invalidateQueries({ queryKey: ['group', groupId] })
+                        queryClient.invalidateQueries({ queryKey: ['activity', groupId] })
                         break
                 }
             } catch {

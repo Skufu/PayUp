@@ -13,6 +13,8 @@ import (
 type Querier interface {
 	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) error
 	ComputeBalancesByGroup(ctx context.Context, groupID pgtype.UUID) ([]ComputeBalancesByGroupRow, error)
+	// Optimized query that returns all group members with their balances in a single query
+	ComputeBalancesByGroupWithAllMembers(ctx context.Context, groupID pgtype.UUID) ([]ComputeBalancesByGroupWithAllMembersRow, error)
 	CountGroupMembers(ctx context.Context, groupID pgtype.UUID) (int64, error)
 	CreateActivity(ctx context.Context, arg CreateActivityParams) (ActivityLog, error)
 	CreateExpense(ctx context.Context, arg CreateExpenseParams) (CreateExpenseRow, error)
@@ -47,11 +49,15 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error)
 	GetUserByIDWithPassword(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserPublicProfile(ctx context.Context, id pgtype.UUID) (GetUserPublicProfileRow, error)
+	// Check if two users share at least one common group (for privacy checks)
+	HaveCommonGroup(ctx context.Context, arg HaveCommonGroupParams) (bool, error)
 	IncrementInviteUseCount(ctx context.Context, code string) error
 	IsGroupMember(ctx context.Context, arg IsGroupMemberParams) (bool, error)
 	LeaveGroup(ctx context.Context, arg LeaveGroupParams) error
 	ListActivityByGroup(ctx context.Context, arg ListActivityByGroupParams) ([]ListActivityByGroupRow, error)
 	ListExpensesByGroup(ctx context.Context, groupID pgtype.UUID) ([]ListExpensesByGroupRow, error)
+	// Paginated version for large expense lists
+	ListExpensesByGroupPaginated(ctx context.Context, arg ListExpensesByGroupPaginatedParams) ([]ListExpensesByGroupPaginatedRow, error)
 	ListGroupMemberIDs(ctx context.Context, groupID pgtype.UUID) ([]pgtype.UUID, error)
 	ListGroupMembers(ctx context.Context, groupID pgtype.UUID) ([]ListGroupMembersRow, error)
 	ListGroupsForUser(ctx context.Context, userID pgtype.UUID) ([]ListGroupsForUserRow, error)

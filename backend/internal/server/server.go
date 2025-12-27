@@ -100,7 +100,7 @@ func New(deps Deps) *gin.Engine {
 		paymentQRGroup.PATCH("/:id/phone", ah.UpdatePaymentQRPhone)
 		}
 
-		v1.GET("/users/:id/profile", auth.Middleware(deps.Issuer), ah.GetUserPublicProfile)
+		v1.GET("/users/:id/profile", auth.Middleware(deps.Issuer), middleware.ProfileRateLimit(), ah.GetUserPublicProfile)
 
 		gh := &handlers.GroupsHandler{Pool: deps.Pool, Q: deps.Q, Hub: deps.EventHub}
 		groups := v1.Group("/groups", auth.Middleware(deps.Issuer))

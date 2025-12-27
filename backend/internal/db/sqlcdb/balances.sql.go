@@ -59,3 +59,59 @@ func (q *Queries) ComputeBalancesByGroup(ctx context.Context, groupID pgtype.UUI
 	}
 	return items, nil
 }
+
+const computeBalancesByGroupWithAllMembers = `-- name: ComputeBalancesByGroupWithAllMembers :many
+WITH paid AS (
+  SELECT payer_id AS user_id, SUM(amount) AS delta
+  FROM expenses
+  WHERE expenses.group_id = $1
+  GROUP BY payer_id
+),
+owed AS (
+  SELECT es.user_id AS user_id, -SUM(es.amount) AS delta
+  FROM expense_splits es
+  JOIN expenses e ON e.id = es.expense_id
+  WHERE e.group_id = $1
+  GROUP BY es.user_id
+),
+all_deltas AS (
+  SELECT user_id, delta FROM paid
+  UNION ALL
+  SELECT user_id, delta FROM owed
+),
+computed AS (
+  SELECT user_id, SUM(delta)::text AS balance
+  FROM all_deltas
+  GROUP BY user_id
+)
+SELECT gm.user_id, COALESCE(c.balance, '0') AS balance
+FROM group_members gm
+LEFT JOIN computed c ON c.user_id = gm.user_id
+WHERE gm.group_id = $1
+`
+
+type ComputeBalancesByGroupWithAllMembersRow struct {
+	UserID  pgtype.UUID `json:"user_id"`
+	Balance string      `json:"balance"`
+}
+
+// Optimized query that returns all group members with their balances in a single query
+func (q *Queries) ComputeBalancesByGroupWithAllMembers(ctx context.Context, groupID pgtype.UUID) ([]ComputeBalancesByGroupWithAllMembersRow, error) {
+	rows, err := q.db.Query(ctx, computeBalancesByGroupWithAllMembers, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ComputeBalancesByGroupWithAllMembersRow
+	for rows.Next() {
+		var i ComputeBalancesByGroupWithAllMembersRow
+		if err := rows.Scan(&i.UserID, &i.Balance); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

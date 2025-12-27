@@ -404,6 +404,23 @@ export function PayUpApp() {
     }
   }, [authState.status])
 
+  // Preload commonly-used modals during idle time for faster first navigation
+  useEffect(() => {
+    const preloadModals = () => {
+      void import('./components/modals/AddExpenseModal')
+      void import('./components/modals/PaymentModal')
+      void import('./components/modals/ProfileModal')
+    }
+
+    if ('requestIdleCallback' in window) {
+      const id = (window as Window).requestIdleCallback(preloadModals, { timeout: 5000 })
+      return () => (window as Window).cancelIdleCallback(id)
+    }
+    // Fallback for browsers without requestIdleCallback
+    const timer = setTimeout(preloadModals, 2000)
+    return () => clearTimeout(timer)
+  }, [])
+
   return (
     <>
       <OfflineIndicator />

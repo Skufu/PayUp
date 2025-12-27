@@ -4,6 +4,10 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Drop console and debugger in production builds
+  esbuild: {
+    drop: ['console', 'debugger'],
+  },
   server: {
     proxy: {
       '/v1': {
@@ -34,5 +38,7 @@ export default defineConfig({
     target: 'esnext',
     // Increase chunk size warning limit (optional, adjust as needed)
     chunkSizeWarningLimit: 500,
+    // Generate sourcemaps for production debugging
+    sourcemap: true,
   },
 })

@@ -110,7 +110,11 @@ func TestAuthGetUserPublicProfile_Success(t *testing.T) {
 	h := &AuthHandler{Q: q}
 
 	r := gin.New()
-	r.GET("/v1/users/:id/profile", h.GetUserPublicProfile)
+	// Stub auth: set user id on context (required for privacy check)
+	r.GET("/v1/users/:id/profile", func(c *gin.Context) {
+		c.Set("userID", uid.String())
+		c.Next()
+	}, h.GetUserPublicProfile)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/users/"+uid.String()+"/profile", nil)
 	rr := httptest.NewRecorder()

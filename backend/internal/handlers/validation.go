@@ -135,3 +135,20 @@ func ValidateURL(url string) error {
 	}
 	return nil
 }
+
+var phMobileRegex = regexp.MustCompile(`^(\+639|09)\d{9}$`)
+
+// ValidatePhoneNumber checks if a phone number is valid.
+// Accepts Philippine mobile formats: 09XXXXXXXXX or +639XXXXXXXXX
+func ValidatePhoneNumber(phone string) error {
+	phone = strings.TrimSpace(phone)
+	if len(phone) == 0 {
+		return nil // Optional field
+	}
+	// Remove common formatting characters
+	cleaned := strings.ReplaceAll(strings.ReplaceAll(phone, "-", ""), " ", "")
+	if !phMobileRegex.MatchString(cleaned) {
+		return errors.New("invalid phone number format (expected 09XXXXXXXXX or +639XXXXXXXXX)")
+	}
+	return nil
+}

@@ -193,6 +193,80 @@ func (q *Queries) ListExpensesByGroup(ctx context.Context, groupID pgtype.UUID) 
 	return items, nil
 }
 
+const listExpensesByGroupPaginated = `-- name: ListExpensesByGroupPaginated :many
+SELECT
+  e.id,
+  e.group_id,
+  e.title,
+  e.amount,
+  e.payer_id,
+  e.mode,
+  e.type,
+  e.category,
+  e.created_at,
+  COALESCE(
+    jsonb_object_agg(es.user_id::text, es.amount) FILTER (WHERE es.user_id IS NOT NULL),
+    '{}'::jsonb
+  )::text AS splits
+FROM expenses e
+LEFT JOIN expense_splits es ON es.expense_id = e.id
+WHERE e.group_id = $1
+GROUP BY e.id
+ORDER BY e.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListExpensesByGroupPaginatedParams struct {
+	GroupID pgtype.UUID `json:"group_id"`
+	Limit   int32       `json:"limit"`
+	Offset  int32       `json:"offset"`
+}
+
+type ListExpensesByGroupPaginatedRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	GroupID   pgtype.UUID        `json:"group_id"`
+	Title     string             `json:"title"`
+	Amount    string             `json:"amount"`
+	PayerID   pgtype.UUID        `json:"payer_id"`
+	Mode      *string            `json:"mode"`
+	Type      *string            `json:"type"`
+	Category  *string            `json:"category"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Splits    string             `json:"splits"`
+}
+
+// Paginated version for large expense lists
+func (q *Queries) ListExpensesByGroupPaginated(ctx context.Context, arg ListExpensesByGroupPaginatedParams) ([]ListExpensesByGroupPaginatedRow, error) {
+	rows, err := q.db.Query(ctx, listExpensesByGroupPaginated, arg.GroupID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListExpensesByGroupPaginatedRow
+	for rows.Next() {
+		var i ListExpensesByGroupPaginatedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.GroupID,
+			&i.Title,
+			&i.Amount,
+			&i.PayerID,
+			&i.Mode,
+			&i.Type,
+			&i.Category,
+			&i.CreatedAt,
+			&i.Splits,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGroupMemberIDs = `-- name: ListGroupMemberIDs :many
 SELECT user_id
 FROM group_members

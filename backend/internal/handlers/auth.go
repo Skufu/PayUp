@@ -316,6 +316,18 @@ func (h *AuthHandler) GetUserPublicProfile(c *gin.Context) {
 		return
 	}
 
+	// Get the requester's user ID from auth context
+	requesterIDStr, ok := c.Get(auth.CtxUserIDKey)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	requesterID, err := uuid.Parse(requesterIDStr.(string))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
@@ -325,18 +337,44 @@ func (h *AuthHandler) GetUserPublicProfile(c *gin.Context) {
 		return
 	}
 
+	// Check if requester and target user share a common group (for privacy)
+	// Same user can always see their own data
+	haveCommonGroup := id == requesterID
+	if !haveCommonGroup {
+		result, err := h.Q.HaveCommonGroup(ctx, sqlcdb.HaveCommonGroupParams{
+			UserID:   sqlcutil.UUID(requesterID),
+			UserID_2: sqlcutil.UUID(id),
+		})
+		if err == nil {
+			haveCommonGroup = result
+		}
+	}
+
 	// Fetch payment QRs for this user
 	qrs, _ := h.Q.GetPaymentQRsByUser(ctx, sqlcutil.UUID(id))
 	var paymentQRs []paymentQRResponse
 	for _, qr := range qrs {
 		ct, _ := sqlcutil.Time(qr.CreatedAt)
-		paymentQRs = append(paymentQRs, paymentQRResponse{
-			ID:          sqlcutil.UUIDToString(qr.ID),
-			Provider:    qr.Provider,
-			QRURL:       qr.QrUrl,
-			PhoneNumber: qr.PhoneNumber,
-			IsPrimary:   qr.IsPrimary,
-			CreatedAt:   ct,
+		qrResp := paymentQRResponse{
+			ID:        sqlcutil.UUIDToString(qr.ID),
+			Provider:  qr.Provider,
+			QRURL:     qr.QrUrl,
+			IsPrimary: qr.IsPrimary,
+			CreatedAt: ct,
+		}
+		// Only include phone number if users share a common group
+		if haveCommonGroup {
+			qrResp.PhoneNumber = qr.PhoneNumber
+		}
+		paymentQRs = append(paymentQRs, qrResp)
+	}
+
+	// Audit log: track profile access with payment info
+	if len(paymentQRs) > 0 && haveCommonGroup && id != requesterID {
+		logger.Info("profile payment info accessed", logger.Fields{
+			"requester_id": requesterID.String(),
+			"target_id":    id.String(),
+			"qr_count":     len(paymentQRs),
 		})
 	}
 
@@ -681,6 +719,10 @@ func (h *AuthHandler) AddPaymentQR(c *gin.Context) {
 	phoneNumber := strings.TrimSpace(c.PostForm("phone_number"))
 	var phoneNumberPtr *string
 	if phoneNumber != "" {
+		if err := ValidatePhoneNumber(phoneNumber); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		phoneNumberPtr = &phoneNumber
 	}
 
@@ -848,6 +890,10 @@ func (h *AuthHandler) UpdatePaymentQRPhone(c *gin.Context) {
 	var phonePtr *string
 	phone := strings.TrimSpace(req.PhoneNumber)
 	if phone != "" {
+		if err := ValidatePhoneNumber(phone); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		phonePtr = &phone
 	}
 

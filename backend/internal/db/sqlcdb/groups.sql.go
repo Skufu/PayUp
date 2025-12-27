@@ -101,6 +101,27 @@ func (q *Queries) GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (s
 	return role, err
 }
 
+const haveCommonGroup = `-- name: HaveCommonGroup :one
+SELECT EXISTS (
+  SELECT 1 FROM group_members gm1
+  JOIN group_members gm2 ON gm1.group_id = gm2.group_id
+  WHERE gm1.user_id = $1 AND gm2.user_id = $2
+) AS have_common_group
+`
+
+type HaveCommonGroupParams struct {
+	UserID   pgtype.UUID `json:"user_id"`
+	UserID_2 pgtype.UUID `json:"user_id_2"`
+}
+
+// Check if two users share at least one common group (for privacy checks)
+func (q *Queries) HaveCommonGroup(ctx context.Context, arg HaveCommonGroupParams) (bool, error) {
+	row := q.db.QueryRow(ctx, haveCommonGroup, arg.UserID, arg.UserID_2)
+	var have_common_group bool
+	err := row.Scan(&have_common_group)
+	return have_common_group, err
+}
+
 const isGroupMember = `-- name: IsGroupMember :one
 SELECT EXISTS (
   SELECT 1 FROM group_members
