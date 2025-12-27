@@ -79,6 +79,9 @@ func (h *InvitesHandler) Preview(c *gin.Context) {
 // StartCleanupJob runs a background goroutine that periodically cleans up
 // expired and exhausted invites. Call this once at server startup.
 func StartInviteCleanupJob(pool *pgxpool.Pool, q *sqlcdb.Queries) {
+	if pool == nil || q == nil {
+		return
+	}
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
