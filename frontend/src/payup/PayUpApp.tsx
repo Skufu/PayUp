@@ -9,6 +9,7 @@ import { ActivityFeed } from './components/ActivityFeed'
 import { OfflineIndicator } from './components/OfflineIndicator'
 import { SideMenu, SideMenuContent } from './components/modals/SideMenu'
 import { ConfirmDialog } from './components/modals/ConfirmDialog'
+import { ToastProvider, useToast } from './components/Toast'
 import { api } from './api/endpoints'
 import { useAuth } from './auth/useAuth'
 import { useGroupEvents } from './hooks/useGroupEvents'
@@ -53,8 +54,9 @@ function initials(name: string): string {
   return (parts[0].slice(0, 1) + parts[parts.length - 1].slice(0, 1)).toUpperCase()
 }
 
-export function PayUpApp() {
+function PayUpAppInner() {
   const { state: authState, logout, refreshMe } = useAuth()
+  const { showToast } = useToast()
   const currentUser = authState.status === 'authed' ? authState.user : (null as unknown as User)
   const qc = useQueryClient()
 
@@ -210,20 +212,23 @@ export function PayUpApp() {
     await qc.invalidateQueries({ queryKey: ['groups'] })
     setCurrentGroupId(created.id)
     setIsCreateGroupOpen(false)
-  }, [qc])
+    showToast('Group created!')
+  }, [qc, showToast])
 
   const handleAddExpense = useCallback(async (expenseData: { id?: string } & Omit<Expense, 'id' | 'createdAt'>) => {
     if (!effectiveGroupId) return
     const { id, ...data } = expenseData
     if (id) {
       await api.updateExpense(id, data)
+      showToast('Expense updated!')
     } else {
       await api.createExpense(effectiveGroupId, data)
+      showToast('Expense added!')
     }
     await qc.invalidateQueries({ queryKey: ['expenses', effectiveGroupId] })
     await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
     await qc.invalidateQueries({ queryKey: ['activity', effectiveGroupId] })
-  }, [effectiveGroupId, qc])
+  }, [effectiveGroupId, qc, showToast])
 
   const handleDeleteExpense = useCallback((expenseId: string) => {
     if (!effectiveGroupId) return
@@ -238,9 +243,10 @@ export function PayUpApp() {
         await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
         await qc.invalidateQueries({ queryKey: ['activity', effectiveGroupId] })
         setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+        showToast('Expense deleted!')
       },
     })
-  }, [effectiveGroupId, qc])
+  }, [effectiveGroupId, qc, showToast])
 
   const handleCloseConfirmDialog = useCallback(() => {
     setConfirmDialog(prev => ({ ...prev, isOpen: false }))
@@ -250,7 +256,8 @@ export function PayUpApp() {
     if (!effectiveGroupId) return
     await api.createPayment(effectiveGroupId, payeeId, amount, proofUrl)
     await qc.invalidateQueries({ queryKey: ['payments', 'pending'] })
-  }, [effectiveGroupId, qc])
+    showToast('Payment submitted!')
+  }, [effectiveGroupId, qc, showToast])
 
   const handleReviewPayment = useCallback(async (paymentId: string, status: Payment['status']) => {
     if (!effectiveGroupId) return
@@ -260,7 +267,8 @@ export function PayUpApp() {
     await qc.invalidateQueries({ queryKey: ['expenses', effectiveGroupId] })
     await qc.invalidateQueries({ queryKey: ['balances', effectiveGroupId] })
     await qc.invalidateQueries({ queryKey: ['activity', effectiveGroupId] })
-  }, [effectiveGroupId, qc])
+    showToast(status === 'approved' ? 'Payment approved!' : 'Payment rejected!')
+  }, [effectiveGroupId, qc, showToast])
 
   const handleNudge = useCallback((userId: string, amount: number) => {
     if (!effectiveGroupId) return
@@ -274,9 +282,10 @@ export function PayUpApp() {
       onConfirm: async () => {
         await api.sendNudge(userId, effectiveGroupId, amount)
         setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+        showToast('Reminder sent!')
       },
     })
-  }, [effectiveGroupId, activeUsers])
+  }, [effectiveGroupId, activeUsers, showToast])
 
   const openAddModal = useCallback((mode: AddModalMode) => {
     setEditingExpense(null)
@@ -300,7 +309,8 @@ export function PayUpApp() {
     await qc.invalidateQueries({ queryKey: ['groups'] })
     setCurrentGroupId(result.groupId)
     setIsJoinGroupOpen(false)
-  }, [qc])
+    showToast('Joined group!')
+  }, [qc, showToast])
 
   const handleLeaveGroup = useCallback(async () => {
     if (!effectiveGroupId) return
@@ -315,9 +325,10 @@ export function PayUpApp() {
         setCurrentGroupId(null)
         setConfirmDialog(prev => ({ ...prev, isOpen: false }))
         setIsMembersModalOpen(false)
+        showToast('Left group!')
       },
     })
-  }, [effectiveGroupId, qc])
+  }, [effectiveGroupId, qc, showToast])
 
   const handleRemoveMember = useCallback(async (userId: string) => {
     if (!effectiveGroupId) return
@@ -331,9 +342,10 @@ export function PayUpApp() {
         await api.removeMember(effectiveGroupId, userId)
         await qc.invalidateQueries({ queryKey: ['group', effectiveGroupId] })
         setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+        showToast('Member removed!')
       },
     })
-  }, [effectiveGroupId, qc, activeUsers])
+  }, [effectiveGroupId, qc, activeUsers, showToast])
 
   // Memoized UI callbacks
   const handleOpenMenu = useCallback(() => setIsMenuOpen(true), [])
@@ -572,3 +584,10 @@ export function PayUpApp() {
   )
 }
 
+export function PayUpApp() {
+  return (
+    <ToastProvider>
+      <PayUpAppInner />
+    </ToastProvider>
+  )
+}

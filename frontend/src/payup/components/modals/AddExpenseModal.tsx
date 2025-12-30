@@ -49,6 +49,7 @@ export function AddExpenseModal({
     return others[0]?.id ?? null
   })
   const [selectedCategory, setSelectedCategory] = useState<string>('Other')
+  const [paidBy, setPaidBy] = useState<string>(currentUser.id)
 
   // Initialize state when editing - this is intentional to sync state with props
   useLayoutEffect(() => {
@@ -59,6 +60,7 @@ export function AddExpenseModal({
       setTransactionType(editingExpense.type as TxType)
       setMode((editingExpense.mode as SplitMode) || 'equal')
       setSelectedCategory(editingExpense.category || 'Other')
+      setPaidBy(editingExpense.payerId || currentUser.id)
       setSplits(editingExpense.splits)
 
       if (editingExpense.type === 'transfer') {
@@ -81,6 +83,7 @@ export function AddExpenseModal({
       setAmount('')
       setTransactionType(initialMode)
       setMode('equal')
+      setPaidBy(currentUser.id)
       const initial: Record<string, number> = {}
       activeUsers.forEach((u) => (initial[u.id] = 0))
       setSplits(initial)
@@ -156,7 +159,7 @@ export function AddExpenseModal({
       id: editingExpense?.id,
       title: transactionType === 'transfer' ? 'Cash Transfer' : title,
       amount: amt,
-      payerId: currentUser.id,
+      payerId: transactionType === 'transfer' ? currentUser.id : paidBy,
       mode: transactionType === 'transfer' ? 'transfer' : mode,
       type: transactionType,
       category: selectedCategory,
@@ -224,6 +227,31 @@ export function AddExpenseModal({
 
           {transactionType === 'expense' && (
             <div>
+              <label className="text-[10px] uppercase text-gray-500 font-mono mb-2 block tracking-wider">Paid by</label>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                {activeUsers.map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => setPaidBy(u.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all shrink-0 ${paidBy === u.id
+                      ? 'bg-[#dfff4f] text-black border-[#dfff4f]'
+                      : 'bg-transparent border-white/20 text-gray-400 hover:border-white/40'
+                      }`}
+                  >
+                    <div className={`w-5 h-5 rounded-full ${u.color} flex items-center justify-center text-[10px] font-bold text-black`}>
+                      {u.avatar}
+                    </div>
+                    <span className="text-xs font-bold">{u.name}</span>
+                    {u.id === currentUser.id && <span className="text-[8px] opacity-60">(You)</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {transactionType === 'expense' && (
+            <div>
               <label className="text-[10px] uppercase text-gray-500 font-mono mb-3 block tracking-wider">Category</label>
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                 {CATEGORIES.map((cat) => (
@@ -231,13 +259,13 @@ export function AddExpenseModal({
                     key={cat.name}
                     type="button"
                     onClick={() => setSelectedCategory(cat.name)}
-                    className={`flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl border transition-all min-w-[80px] ${selectedCategory === cat.name
+                    className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl border transition-all min-w-[70px] shrink-0 ${selectedCategory === cat.name
                       ? 'bg-[#dfff4f] text-black border-[#dfff4f] shadow-lg shadow-[#dfff4f]/10'
                       : 'bg-[#0a0a0c] border-white/5 text-gray-500 hover:text-white hover:border-white/10'
                       }`}
                   >
                     <span className="text-xl">{cat.icon}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-tight">{cat.name}</span>
+                    <span className="text-[9px] font-bold uppercase tracking-tight whitespace-nowrap">{cat.name}</span>
                   </button>
                 ))}
               </div>

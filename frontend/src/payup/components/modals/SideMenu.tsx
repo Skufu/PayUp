@@ -83,7 +83,7 @@ export function SideMenuContent({
               <div className={`font-bold text-sm truncate ${currentGroupId === group.id ? 'text-[#dfff4f]' : 'text-gray-300'}`}>
                 {group.name}
               </div>
-              <div className="text-[10px] truncate opacity-60">{group.memberCount ?? group.members?.length ?? 0} Members</div>
+              <div className="text-[10px] truncate opacity-60">{group.memberCount ?? group.members?.length ?? 0} {(group.memberCount ?? group.members?.length ?? 0) === 1 ? 'Member' : 'Members'}</div>
             </div>
             {currentGroupId === group.id && <Check size={14} className="ml-auto text-[#dfff4f]" />}
           </button>

@@ -148,7 +148,7 @@ const BalanceCard = memo(function BalanceCard({ balances, currentUser, expenses 
 
         <div className="mb-6 text-center md:text-left">
           <span
-            className={`font-display text-4xl md:text-5xl font-bold tracking-tight drop-shadow-lg block truncate ${isDebt ? 'text-[#ff4f99]' : 'text-[#dfff4f]'
+            className={`font-display text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight drop-shadow-lg block ${isDebt ? 'text-[#ff4f99]' : 'text-[#dfff4f]'
               }`}
           >
             {Math.abs(myBalance).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
@@ -360,16 +360,16 @@ const ExpenseItem = memo(function ExpenseItem({
         <div className="flex items-start gap-3 shrink-0">
           {/* Context Badge (Owe/Receive) */}
           {!isPayer && myShare > 0 && !isTransfer && (
-            <div className="px-2 py-1 rounded bg-[#ff4f99]/10 border border-[#ff4f99]/20 flex flex-col items-end">
-              <span className="text-[8px] text-[#ff4f99]/70 font-mono uppercase leading-none mb-0.5">You Owe</span>
+            <div className="px-2 py-1 rounded bg-[#ff4f99]/15 border border-[#ff4f99]/40 flex flex-col items-end">
+              <span className="text-[8px] text-[#ff4f99] font-mono uppercase leading-none mb-0.5">You Owe</span>
               <span className="text-xs text-[#ff4f99] font-mono font-bold leading-none">
                 {myShare.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
               </span>
             </div>
           )}
           {isTransfer && !isPayer && myShare > 0 && (
-            <div className="px-2 py-1 rounded bg-[#dfff4f]/10 border border-[#dfff4f]/20 flex flex-col items-end">
-              <span className="text-[8px] text-[#dfff4f]/70 font-mono uppercase leading-none mb-0.5">Received</span>
+            <div className="px-2 py-1 rounded bg-[#dfff4f]/15 border border-[#dfff4f]/40 flex flex-col items-end">
+              <span className="text-[8px] text-[#dfff4f] font-mono uppercase leading-none mb-0.5">Received</span>
               <span className="text-xs text-[#dfff4f] font-mono font-bold leading-none">
                 {myShare.toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
               </span>
