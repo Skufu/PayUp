@@ -8,9 +8,14 @@ PayUp is a full-stack expense-splitting application with React (PWA) frontend an
 
 **Start development:**
 ```bash
-./dev.sh
+make setup   # First-time setup (creates .env, installs deps, starts db, runs migrations)
+make dev     # Start development server (backend + frontend)
 ```
-This runs backend on :8080 and frontend on :5173.
+Or use bash scripts directly:
+```bash
+./setup.sh   # First-time setup
+./dev.sh     # Start development (backend on :8080, frontend on :5173)
+```
 
 **Environment setup:**
 1. Copy `env.example` to `.env`
@@ -21,12 +26,35 @@ This runs backend on :8080 and frontend on :5173.
 
 ## Essential Commands
 
+### Makefile Commands (Recommended)
+
+Run `make help` to see all available commands:
+
+```bash
+make setup          # First-time setup (creates .env, installs deps, starts db, runs migrations)
+make dev            # Start development server (backend + frontend)
+make dev-docker     # Start full stack via Docker Compose
+
+make db             # Start Postgres container
+make db-stop        # Stop Postgres container
+make db-reset       # Reset database (delete volume and restart)
+
+make migrate        # Run database migrations
+make migrate-status # Show migration status
+
+make test           # Run backend tests
+make lint           # Run linters (backend + frontend)
+
+make clean          # Stop all containers and remove volumes
+```
+
 ### Backend (Go)
 
 **Development:**
 ```bash
 cd backend
 go run ./cmd/api                    # Start API server
+go run ./cmd/migrate up             # Run migrations
 go test ./...                       # Run all tests
 go test ./internal/balance/...      # Run specific package tests
 ```
@@ -34,16 +62,17 @@ go test ./internal/balance/...      # Run specific package tests
 **Database:**
 ```bash
 cd backend
-goose postgres "$DATABASE_URL" up                    # Run migrations
-goose postgres "$DATABASE_URL" down                  # Rollback one migration
-goose postgres "$DATABASE_URL" status                # Check migration status
-sqlc generate                                        # Regenerate type-safe DB code
+go run ./cmd/migrate up             # Run migrations
+go run ./cmd/migrate down           # Rollback one migration
+go run ./cmd/migrate status         # Check migration status
+sqlc generate                       # Regenerate type-safe DB code
 ```
 
 **Build:**
 ```bash
 cd backend
-docker build -t payup-api .
+go build ./cmd/api                  # Build API binary
+docker build -t payup-api .         # Build Docker image
 ```
 
 ### Frontend (React + Vite)
@@ -66,6 +95,9 @@ docker build -t payup-frontend .
 ### Docker Compose
 
 ```bash
+# Full stack (dev mode with hot reload)
+docker compose -f docker-compose.dev.yml up --build
+
 # Backend + Frontend (requires external Postgres)
 docker compose up --build
 
@@ -88,10 +120,14 @@ docker compose -f backend/docker-compose.yml up -d
     /api           # API client + React Query hooks
     /auth          # AuthProvider + token management
     /components    # UI components + modals
+    /constants     # Application constants
+    /hooks         # Custom React hooks
+    /mock          # Mock data for development
     /pages         # Route pages
     /push          # Push notification utilities
     /pwa           # Service worker setup
     /ui            # Reusable UI primitives
+    /utils         # Utility functions
   /public/sw.js    # Service worker (offline + push)
 
 /backend           # Go API
@@ -102,31 +138,51 @@ docker compose -f backend/docker-compose.yml up -d
     /balance       # Balance calculation from expenses/splits
     /config        # Environment config loader
     /db            # Database connection + sqlc generated code
+    /events        # Server-sent events (SSE) hub for real-time updates
     /handlers      # HTTP route handlers (auth, groups, expenses, etc.)
+    /logger        # Structured logging
     /middleware    # CORS, rate limiting, security headers, HTTPS enforcement
     /server        # Gin router setup
     /services      # Business logic (uploads, push)
+    /util          # Utility functions (context, money, pointers)
   /migrations      # Goose SQL migration files
+  /scripts         # Migration helper scripts
   /sql
     /schema.sql    # Full DB schema for sqlc
-    /queries/      # Named SQL queries for sqlc
+    /queries/      # Named SQL queries for sqlc (users, groups, expenses, etc.)
+  /tools           # Go tool dependencies
 
 /docs              # Comprehensive documentation
+  AI_INDEX.md      # AI-friendly feature map (start here)
+  ARCHITECTURE.md  # High-level architecture and flow
+  API.md           # API reference
+  BACKEND.md       # Backend implementation details
+  DATABASE.md      # Database schema and relationships
+  DEPLOYMENT.md    # Deployment instructions
+  FRONTEND.md      # Frontend architecture and patterns
+
+/.github/workflows # CI/CD pipelines
+  ci.yml           # Continuous integration (tests, linting, builds)
+  deploy.yml       # Deployment workflows
 ```
 
 ### Key Architectural Patterns
 
 **Backend:**
-- **Dependency Injection:** `server.Deps` struct passed to all handlers (contains DB pool, sqlc queries, JWT issuer, etc.)
+- **Dependency Injection:** `server.Deps` struct passed to all handlers (contains DB pool, sqlc queries, JWT issuer, EventHub, etc.)
 - **Handler Pattern:** Each domain (auth, groups, expenses, payments) has a handler struct with embedded dependencies
-- **Middleware Chain:** Recovery → CORS → Security headers → Rate limit → Logging → HTTPS (order critical)
+- **Middleware Chain:** Recovery → Request ID → CORS → Security headers → Rate limit → Structured logging → HTTPS (order critical)
 - **Rate Limiting Strategy:**
   - General endpoints: 60/min per IP
   - Login/register/OAuth: 5 per 15min per IP (credential-based auth)
   - Token refresh: 30 per 15min per IP (already authenticated, needs headroom for multi-tab users)
   - Payments: 20/hour per IP
+  - Profile views: 30/min per IP
   - All rate limiters return `X-RateLimit-*` headers for client visibility
+- **Real-time Updates:** Server-sent events (SSE) hub (`internal/events/hub.go`) broadcasts group updates to connected clients
+- **Activity Logging:** All group actions (expenses, payments, member changes) are logged to `activity_log` table
 - **sqlc Code Generation:** All database queries are in `sql/queries/*.sql` and generate type-safe Go code in `internal/db/sqlcdb/`
+- **Structured Logging:** Request ID tracking, structured JSON logs via `internal/logger/logger.go`
 
 **Frontend:**
 - **Auth Flow:** AuthProvider context wraps app; tokens in sessionStorage/localStorage
@@ -153,23 +209,29 @@ docker compose -f backend/docker-compose.yml up -d
 
 1. **Database changes:**
    - Create migration: `backend/migrations/00X_feature_name.sql`
+   - Follow Goose format with `-- +goose Up` and `-- +goose Down` markers
    - Update schema: `backend/sql/schema.sql`
    - Add queries: `backend/sql/queries/feature.sql`
-   - Run: `goose postgres "$DATABASE_URL" up && sqlc generate`
+   - Run: `make migrate && cd backend && sqlc generate`
+   - Or: `go run ./cmd/migrate up && sqlc generate` (from backend directory)
 
 2. **Backend API:**
    - Write handler in `backend/internal/handlers/feature.go`
    - Add route in `backend/internal/server/server.go`
+   - Consider rate limiting for the endpoint
    - Add tests in `backend/internal/handlers/feature_test.go`
+   - If real-time updates needed, emit events via `EventHub`
 
 3. **Frontend integration:**
    - Create API hook in `frontend/src/payup/api/featureQueries.ts`
    - Update `frontend/src/payup/api/endpoints.ts`
    - Build UI component in `frontend/src/payup/components/`
+   - Use React Query for data fetching and caching
 
 4. **Testing:**
    - Backend: `cd backend && go test ./internal/handlers/...`
    - Frontend: Manual testing in dev mode
+   - Verify CI passes: checks formatting, linting, tests, and builds
 
 ### Modifying Database Schema
 
@@ -236,6 +298,24 @@ docker compose -f backend/docker-compose.yml up -d
 - Test handlers: `backend/internal/handlers/*_test.go`
 - Run tests before committing: `go test ./...`
 
+### CI/CD
+- **GitHub Actions workflows** in `.github/workflows/`
+  - `ci.yml`: Runs on all branches - backend tests, linting, formatting checks, sqlc verification, frontend linting and builds
+  - `deploy.yml`: Deployment workflows
+- **Backend CI checks:**
+  - Go module verification
+  - `gofmt` formatting check
+  - `go vet` static analysis
+  - `staticcheck` linter
+  - sqlc generated code verification (fails if out of sync)
+  - Race detector enabled tests with coverage
+  - Docker build verification
+- **Frontend CI checks:**
+  - ESLint
+  - TypeScript compilation
+  - Production build
+- **Concurrency:** Automatically cancels in-progress runs when new commits are pushed to the same branch
+
 ## Environment Variables Reference
 
 **Backend (required):**
@@ -276,6 +356,44 @@ docker compose -f backend/docker-compose.yml up -d
 
 See `docs/DEPLOYMENT.md` for detailed deployment instructions.
 
+## Additional Features
+
+### Password Reset
+- Users can request password reset via email
+- `POST /v1/auth/reset-request` initiates the reset flow
+- `POST /v1/auth/reset` completes the reset with token
+- Requires email sending service configuration (optional)
+
+### Google OAuth
+- Sign in with Google is available
+- `POST /v1/auth/google` handles OAuth token exchange
+- Requires `GOOGLE_CLIENT_ID` environment variable
+- Frontend uses `@react-oauth/google` package
+
+### Payment QR Codes
+- Users can store payment QR codes for easy sharing
+- Supports multiple QR codes with primary designation
+- Phone number can be associated with QR codes
+- QR images uploaded to Cloudinary (if configured)
+
+### Activity Log
+- All group actions are automatically logged
+- View via `GET /v1/groups/:id/activity`
+- Tracks expenses, payments, member changes, etc.
+- Useful for audit trails and user transparency
+
+### Real-time Updates
+- Server-sent events (SSE) for live group updates
+- Connect via `GET /v1/groups/:id/events` with auth token in query param
+- Broadcasts expense changes, payments, and member updates
+- Frontend can subscribe to receive instant notifications
+
+### Invite System
+- Generate shareable invite codes with expiration
+- Preview invites without authentication
+- Automatic cleanup job removes expired invites
+- Configurable invite limits and expiration times
+
 ## Troubleshooting
 
 **"Cannot find module" errors in frontend:**
@@ -285,7 +403,7 @@ See `docs/DEPLOYMENT.md` for detailed deployment instructions.
 **Database connection errors:**
 - Verify `DATABASE_URL` in `.env`
 - Ensure Postgres is running: `docker compose -f backend/docker-compose.yml ps`
-- Check migrations are up: `goose postgres "$DATABASE_URL" status`
+- Check migrations are up: `make migrate-status` or `go run ./cmd/migrate status`
 
 **CORS errors in browser:**
 - Set `CORS_ORIGINS` in backend `.env` to include frontend URL
@@ -294,6 +412,11 @@ See `docs/DEPLOYMENT.md` for detailed deployment instructions.
 **"sqlc: no such file or directory":**
 - Install sqlc: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
 - Ensure `$GOPATH/bin` is in your `$PATH`
+
+**sqlc generated code out of sync:**
+- Run `sqlc generate` from backend directory after any schema or query changes
+- CI will fail if generated code doesn't match queries
+- Never manually edit files in `internal/db/sqlcdb/`
 
 **JWT token expired errors:**
 - Tokens auto-refresh **proactively** (before expiration) and reactively (on 401)
@@ -306,7 +429,19 @@ See `docs/DEPLOYMENT.md` for detailed deployment instructions.
 - Check `X-RateLimit-*` headers in browser dev tools for details
 - Login/register: 5 attempts per 15min (strict for security)
 - Token refresh: 30 attempts per 15min (lenient for multi-tab users)
+- Payments: 20/hour (strict for financial operations)
 - If hitting refresh limits, check for bugs causing excessive refresh attempts
+
+**Go build errors:**
+- Ensure Go 1.24+ is installed: `go version`
+- Run `go mod download` to fetch dependencies
+- Check `go.mod` and `go.sum` are not corrupted
+
+**Frontend build errors:**
+- Ensure Node.js 22+ is installed: `node --version`
+- Delete `node_modules` and run `npm install` again
+- Check for TypeScript errors: `npm run build`
+- Verify all environment variables are set correctly
 
 ## API Route Reference
 
@@ -315,34 +450,62 @@ See `docs/AI_INDEX.md` for complete list. Key routes:
 **Auth:**
 - `POST /v1/auth/register` - Create account
 - `POST /v1/auth/login` - Login
+- `POST /v1/auth/google` - Google OAuth authentication
 - `POST /v1/auth/refresh` - Refresh access token
+- `POST /v1/auth/reset-request` - Request password reset
+- `POST /v1/auth/reset` - Reset password
 - `GET /v1/auth/me` - Get current user
 - `PATCH /v1/auth/profile` - Update profile
+- `GET /v1/users/:id/profile` - Get user public profile
+
+**Payment QR Codes:**
+- `GET /v1/auth/payment-qr` - List payment QR codes
+- `POST /v1/auth/payment-qr` - Add payment QR code
+- `DELETE /v1/auth/payment-qr/:id` - Delete payment QR code
+- `PATCH /v1/auth/payment-qr/:id/primary` - Set as primary
+- `PATCH /v1/auth/payment-qr/:id/phone` - Update phone number
 
 **Groups:**
 - `GET /v1/groups` - List user's groups
 - `POST /v1/groups` - Create group
+- `GET /v1/groups/:id` - Get group details
 - `POST /v1/groups/:id/invite` - Generate invite code
 - `POST /v1/groups/join/:code` - Join via code
+- `DELETE /v1/groups/:id/leave` - Leave group
+- `DELETE /v1/groups/:id/members/:userId` - Remove member
+
+**Invites:**
+- `GET /v1/invites/:code/preview` - Preview invite (public, no auth)
 
 **Expenses:**
 - `GET /v1/groups/:id/expenses` - List group expenses
 - `POST /v1/groups/:id/expenses` - Create expense
+- `PATCH /v1/expenses/:id` - Update expense
 - `DELETE /v1/expenses/:id` - Delete expense
 
 **Balances & Payments:**
 - `GET /v1/groups/:id/balances` - Get computed balances
 - `POST /v1/payments` - Create payment
+- `GET /v1/payments` - List payments
 - `PATCH /v1/payments/:id/approve` - Approve payment
 - `PATCH /v1/payments/:id/reject` - Reject payment
+- `POST /v1/payments/upload-proof` - Upload payment proof
 
 **Notifications:**
 - `POST /v1/nudges` - Send nudge
 - `GET /v1/nudges` - List nudges
+- `GET /v1/nudges/unread-count` - Get unread count
 - `PATCH /v1/nudges/:id/read` - Mark as read
+- `POST /v1/nudges/mark-all-read` - Mark all as read
 
 **Push:**
 - `POST /v1/push/subscribe` - Subscribe to push
 - `DELETE /v1/push/unsubscribe` - Unsubscribe
+
+**Activity:**
+- `GET /v1/groups/:id/activity` - Get group activity log
+
+**Real-time Events:**
+- `GET /v1/groups/:id/events` - Server-sent events (SSE) stream for group updates
 
 All authenticated routes require `Authorization: Bearer <token>` header.
