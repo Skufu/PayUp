@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-function isRunningStandalone(): boolean {
+export function isRunningStandalone(): boolean {
   const standaloneMq = window.matchMedia?.('(display-mode: standalone)').matches ?? false
   const iosStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone === true
   return standaloneMq || iosStandalone

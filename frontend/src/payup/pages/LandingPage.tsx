@@ -1,9 +1,10 @@
 import { ArrowRight, Menu, Shield, Users, X, Zap } from 'lucide-react'
 import { motion, useScroll, useTransform } from 'framer-motion'
-import { useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { NetworkBackground } from '../components/NetworkBackground'
+import { isRunningStandalone } from '../pwa/pwaGuide'
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20, filter: 'blur(10px)' },
@@ -21,12 +22,20 @@ const staggerContainer = {
 }
 
 export function LandingPage() {
+  const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const containerRef = useRef(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
   })
+
+  // Redirect to login when opened as a PWA from home screen
+  useEffect(() => {
+    if (isRunningStandalone()) {
+      navigate('/auth/login', { replace: true })
+    }
+  }, [navigate])
 
   const y = useTransform(scrollYProgress, [0, 1], [0, -50])
 
