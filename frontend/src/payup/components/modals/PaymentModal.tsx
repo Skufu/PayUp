@@ -1,9 +1,23 @@
-import { ArrowRight, Camera, Check, Copy, Receipt, Upload, X } from 'lucide-react'
+import { ArrowRight, Camera, Check, Copy, ExternalLink, Receipt, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { api, type PaymentQR } from '../../api/endpoints'
 import type { User } from '../../types'
 import { PAYMENT_PROVIDERS } from '../../constants/PaymentProviders'
+
+// Deep link URLs for e-wallet apps
+const APP_LINKS: Record<string, { deepLink: string; webFallback: string; name: string }> = {
+  gcash: {
+    deepLink: 'https://gcsh.app/r/sendmoney', // GCash universal link for send money
+    webFallback: 'https://www.gcash.com/',
+    name: 'GCash'
+  },
+  maya: {
+    deepLink: 'https://www.maya.ph/link/sendmoney', // Maya universal link
+    webFallback: 'https://www.maya.ph/',
+    name: 'Maya'
+  }
+}
 
 type Props = {
   isOpen: boolean
@@ -81,6 +95,30 @@ export function PaymentModal({ isOpen, onClose, payeeId, amount, activeUsers, on
     }
   }
 
+  // Copy phone number and open the e-wallet app
+  const handleCopyAndOpenApp = async (phone: string, provider: string) => {
+    try {
+      await navigator.clipboard.writeText(phone)
+      setCopiedPhone(true)
+      setTimeout(() => setCopiedPhone(false), 2000)
+
+      // Get the app link for this provider
+      const appLink = APP_LINKS[provider]
+      if (appLink) {
+        // Use a small delay to ensure clipboard write completes
+        setTimeout(() => {
+          window.open(appLink.deepLink, '_blank')
+        }, 100)
+      }
+    } catch {
+      // If clipboard fails, still try to open the app
+      const appLink = APP_LINKS[provider]
+      if (appLink) {
+        window.open(appLink.deepLink, '_blank')
+      }
+    }
+  }
+
   const selectedQRUrl = getSelectedQRUrl()
   const selectedPhoneNumber = getSelectedPhoneNumber()
   const hasAnyPhone = payeeQRs.some(q => !!q.phoneNumber)
@@ -153,18 +191,30 @@ export function PaymentModal({ isOpen, onClose, payeeId, amount, activeUsers, on
                 <div className="bg-white p-4 rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.1)] transform transition-transform hover:scale-105 duration-300 mb-2">
                   <img src={selectedQRUrl} alt="QR Code" className="w-48 h-48 mix-blend-multiply object-contain" />
                 </div>
-                {/* Phone Number Display */}
-                {selectedPhoneNumber && (
-                  <div className="flex items-center justify-center gap-2 py-2 px-4 bg-white/5 rounded-xl border border-white/10">
-                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">Mobile:</span>
-                    <span className="text-base text-white font-mono font-bold">{selectedPhoneNumber}</span>
-                    <button
-                      onClick={() => handleCopyPhone(selectedPhoneNumber)}
-                      className="p-1.5 text-gray-400 hover:text-[#dfff4f] transition-colors rounded-lg hover:bg-white/10"
-                      title="Copy number"
-                    >
-                      {copiedPhone ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                    </button>
+                {/* Phone Number Display with Copy & Open App Button */}
+                {selectedPhoneNumber && selectedProvider && (
+                  <div className="flex flex-col items-center gap-2 mt-2">
+                    <div className="flex items-center justify-center gap-2 py-2 px-4 bg-white/5 rounded-xl border border-white/10">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider">Mobile:</span>
+                      <span className="text-base text-white font-mono font-bold">{selectedPhoneNumber}</span>
+                      <button
+                        onClick={() => handleCopyPhone(selectedPhoneNumber)}
+                        className="p-1.5 text-gray-400 hover:text-[#dfff4f] transition-colors rounded-lg hover:bg-white/10"
+                        title="Copy number"
+                      >
+                        {copiedPhone ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                      </button>
+                    </div>
+                    {/* Copy & Open App Button */}
+                    {APP_LINKS[selectedProvider] && (
+                      <button
+                        onClick={() => handleCopyAndOpenApp(selectedPhoneNumber, selectedProvider)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#007dfe] to-[#0057b8] hover:from-[#0090ff] hover:to-[#0068d6] text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
+                      >
+                        <ExternalLink size={16} />
+                        <span>Copy Number & Open {APP_LINKS[selectedProvider].name}</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
