@@ -38,3 +38,11 @@ UPDATE nudges
 SET read = true
 WHERE receiver_id = $1 AND read = false;
 
+-- name: CountRecentNudges :one
+-- Check for nudges sent by sender to receiver in the last hour
+SELECT COUNT(*)::int AS count
+FROM nudges
+WHERE sender_id = $1 
+  AND receiver_id = $2 
+  AND group_id = $3
+  AND created_at > NOW() - INTERVAL '1 hour';

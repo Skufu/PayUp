@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { AlertCircle, ArrowRight, Loader2, Lock, Mail } from 'lucide-react'
@@ -15,6 +15,13 @@ export function LoginPage() {
   const nav = useNavigate()
   const loc = useLocation()
   const from = ((loc.state as { from?: { pathname?: string } } | null)?.from?.pathname as string | undefined) ?? '/app'
+
+  // Redirect already-authenticated users to /app
+  useEffect(() => {
+    if (state.status === 'authed') {
+      nav(from, { replace: true })
+    }
+  }, [state.status, nav, from])
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

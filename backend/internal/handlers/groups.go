@@ -476,8 +476,8 @@ func (h *GroupsHandler) RemoveMember(c *gin.Context) {
 		GroupID: groupID,
 		UserID:  sqlcutil.UUID(uid),
 	})
-	if err != nil || role != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "only admins can remove members"})
+	if err != nil || (role != "admin" && role != "owner") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only admins and owners can remove members"})
 		return
 	}
 
@@ -521,8 +521,9 @@ func (h *GroupsHandler) ensureZeroBalance(ctx context.Context, groupID pgtype.UU
 			if err != nil {
 				return err
 			}
-			if math.Abs(bal) > 0.01 {
-				return fmt.Errorf("must settle balance first")
+			// Use slightly larger epsilon to handle floating-point accumulation
+			if math.Abs(bal) > 0.05 {
+				return fmt.Errorf("must settle balance first (current: ₱%.2f)", bal)
 			}
 		}
 	}

@@ -16,6 +16,10 @@ type Querier interface {
 	// Optimized query that returns all group members with their balances in a single query
 	ComputeBalancesByGroupWithAllMembers(ctx context.Context, groupID pgtype.UUID) ([]ComputeBalancesByGroupWithAllMembersRow, error)
 	CountGroupMembers(ctx context.Context, groupID pgtype.UUID) (int64, error)
+	// Check for pending payments from sender to receiver in a group
+	CountPendingPaymentsBetweenUsers(ctx context.Context, arg CountPendingPaymentsBetweenUsersParams) (int32, error)
+	// Check for nudges sent by sender to receiver in the last hour
+	CountRecentNudges(ctx context.Context, arg CountRecentNudgesParams) (int32, error)
 	CreateActivity(ctx context.Context, arg CreateActivityParams) (ActivityLog, error)
 	CreateExpense(ctx context.Context, arg CreateExpenseParams) (CreateExpenseRow, error)
 	CreateExpenseSplit(ctx context.Context, arg CreateExpenseSplitParams) error

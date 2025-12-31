@@ -11,6 +11,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countRecentNudges = `-- name: CountRecentNudges :one
+SELECT COUNT(*)::int AS count
+FROM nudges
+WHERE sender_id = $1 
+  AND receiver_id = $2 
+  AND group_id = $3
+  AND created_at > NOW() - INTERVAL '1 hour'
+`
+
+type CountRecentNudgesParams struct {
+	SenderID   pgtype.UUID `json:"sender_id"`
+	ReceiverID pgtype.UUID `json:"receiver_id"`
+	GroupID    pgtype.UUID `json:"group_id"`
+}
+
+// Check for nudges sent by sender to receiver in the last hour
+func (q *Queries) CountRecentNudges(ctx context.Context, arg CountRecentNudgesParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countRecentNudges, arg.SenderID, arg.ReceiverID, arg.GroupID)
+	var count int32
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createNudge = `-- name: CreateNudge :one
 INSERT INTO nudges (group_id, sender_id, receiver_id, amount, message)
 VALUES ($1, $2, $3, $4, $5)

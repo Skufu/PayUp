@@ -155,8 +155,8 @@ func (h *ExpensesHandler) CreateForGroup(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid splits userId"})
 			return
 		}
-		if v < 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "split amount must be >= 0"})
+		if v <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "split amount must be > 0"})
 			return
 		}
 		cents := util.MoneyToCents(v)
@@ -329,8 +329,8 @@ func (h *ExpensesHandler) Update(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid splits userId"})
 			return
 		}
-		if v < 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "split amount must be >= 0"})
+		if v <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "split amount must be > 0"})
 			return
 		}
 		cents := util.MoneyToCents(v)

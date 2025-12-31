@@ -11,6 +11,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countPendingPaymentsBetweenUsers = `-- name: CountPendingPaymentsBetweenUsers :one
+SELECT COUNT(*)::int AS count
+FROM payments
+WHERE sender_id = $1 
+  AND receiver_id = $2 
+  AND group_id = $3
+  AND status = 'pending'
+`
+
+type CountPendingPaymentsBetweenUsersParams struct {
+	SenderID   pgtype.UUID `json:"sender_id"`
+	ReceiverID pgtype.UUID `json:"receiver_id"`
+	GroupID    pgtype.UUID `json:"group_id"`
+}
+
+// Check for pending payments from sender to receiver in a group
+func (q *Queries) CountPendingPaymentsBetweenUsers(ctx context.Context, arg CountPendingPaymentsBetweenUsersParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countPendingPaymentsBetweenUsers, arg.SenderID, arg.ReceiverID, arg.GroupID)
+	var count int32
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createPayment = `-- name: CreatePayment :one
 INSERT INTO payments (group_id, sender_id, receiver_id, amount, status, proof_url)
 VALUES ($1, $2, $3, $4, 'pending', $5)

@@ -88,6 +88,17 @@ func (h *NudgesHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Rate limit: max 1 nudge per hour per sender-receiver-group combo
+	recentCount, err := h.Q.CountRecentNudges(ctx, sqlcdb.CountRecentNudgesParams{
+		SenderID:   sqlcutil.UUID(uid),
+		ReceiverID: sqlcutil.UUID(debtorID),
+		GroupID:    groupID,
+	})
+	if err == nil && recentCount > 0 {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "you can only nudge this person once per hour"})
+		return
+	}
+
 	msg := ""
 	if req.Message != nil {
 		msg = strings.TrimSpace(*req.Message)

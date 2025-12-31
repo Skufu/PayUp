@@ -56,6 +56,11 @@ func (h *PaymentsHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid receiverId"})
 		return
 	}
+	// Prevent payment to self
+	if senderID == receiverID {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot pay yourself"})
+		return
+	}
 	if err := ValidateAmount(req.Amount); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -73,6 +78,17 @@ func (h *PaymentsHandler) Create(c *gin.Context) {
 	}
 	if !memberSet[senderID] || !memberSet[receiverID] {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "both users must be group members"})
+		return
+	}
+
+	// Prevent duplicate pending payments to same receiver
+	pendingCount, err := h.Q.CountPendingPaymentsBetweenUsers(ctx, sqlcdb.CountPendingPaymentsBetweenUsersParams{
+		SenderID:   sqlcutil.UUID(senderID),
+		ReceiverID: sqlcutil.UUID(receiverID),
+		GroupID:    gid,
+	})
+	if err == nil && pendingCount > 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "you already have a pending payment to this person"})
 		return
 	}
 

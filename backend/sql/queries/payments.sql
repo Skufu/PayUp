@@ -25,3 +25,11 @@ INSERT INTO expenses (group_id, title, amount, payer_id, mode, type, created_by)
 VALUES ($1, $2, $3, $4, 'transfer', 'transfer', $5)
 RETURNING id;
 
+-- name: CountPendingPaymentsBetweenUsers :one
+-- Check for pending payments from sender to receiver in a group
+SELECT COUNT(*)::int AS count
+FROM payments
+WHERE sender_id = $1 
+  AND receiver_id = $2 
+  AND group_id = $3
+  AND status = 'pending';
