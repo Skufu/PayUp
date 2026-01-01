@@ -123,15 +123,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, authResponse{
-		User: h.toUserResponse(ctx, sqlcdb.GetUserByIDRow{
-			ID:        row.ID,
-			Email:     row.Email,
-			Name:      row.Name,
-			AvatarUrl: row.AvatarUrl,
-			QrUrl:     row.QrUrl,
-			CreatedAt: row.CreatedAt,
-			UpdatedAt: row.UpdatedAt,
-		}),
+		User:  h.toUserResponse(ctx, sqlcdb.GetUserByIDRow(row)),
 		Token: tokens,
 	})
 }
@@ -511,15 +503,7 @@ func (h *AuthHandler) GoogleAuth(c *gin.Context) {
 				return
 			}
 
-			user = sqlcdb.GetUserByIDRow{
-				ID:        newUser.ID,
-				Email:     newUser.Email,
-				Name:      newUser.Name,
-				AvatarUrl: newUser.AvatarUrl,
-				QrUrl:     newUser.QrUrl,
-				CreatedAt: newUser.CreatedAt,
-				UpdatedAt: newUser.UpdatedAt,
-			}
+			user = sqlcdb.GetUserByIDRow(newUser)
 		}
 	}
 

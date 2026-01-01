@@ -90,7 +90,7 @@ export function AddExpenseModal({
       setExcludedUsers(new Set())
     }
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [editingExpense, isOpen, activeUsers, initialMode])
+  }, [editingExpense, isOpen, activeUsers, initialMode, currentUser.id])
 
   const toggleUserExclusion = (uid: string) => {
     setExcludedUsers((prev) => {
