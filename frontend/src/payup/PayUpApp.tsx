@@ -29,7 +29,6 @@ const ProfileModal = lazy(() => import('./components/modals/ProfileModal').then(
 const PushNotificationPrompt = lazy(() => import('./components/modals/PushNotificationPrompt').then(m => ({ default: m.PushNotificationPrompt })))
 const ShareInviteModal = lazy(() => import('./components/modals/ShareInviteModal').then(m => ({ default: m.ShareInviteModal })))
 
-type AddModalMode = 'expense' | 'transfer'
 
 const COLORS = [
   'bg-blue-500',
@@ -68,7 +67,6 @@ function PayUpAppInner() {
   // UI State
   const [activeTab, setActiveTab] = useState<'wallet' | 'notifications' | 'activity'>('wallet')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [addModalMode, setAddModalMode] = useState<AddModalMode>('expense')
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [payModal, setPayModal] = useState<{ open: boolean; payeeId: string | null; amount: number }>({
     open: false,
@@ -288,15 +286,13 @@ function PayUpAppInner() {
     })
   }, [effectiveGroupId, activeUsers, showToast])
 
-  const openAddModal = useCallback((mode: AddModalMode) => {
+  const openAddModal = useCallback(() => {
     setEditingExpense(null)
-    setAddModalMode(mode)
     setIsAddModalOpen(true)
   }, [])
 
   const handleEditExpense = useCallback((expense: Expense) => {
     setEditingExpense(expense)
-    setAddModalMode((expense.type as AddModalMode) || 'expense')
     setIsAddModalOpen(true)
   }, [])
 
@@ -368,7 +364,7 @@ function PayUpAppInner() {
     setEditingExpense(null)
   }, [])
   const handleClosePushPrompt = useCallback(() => setIsPushPromptOpen(false), [])
-  const handleCentralAdd = useCallback(() => openAddModal('expense'), [openAddModal])
+  const handleCentralAdd = useCallback(() => openAddModal(), [openAddModal])
   const handlePayClick = useCallback((uid: string, amt: number) => setPayModal({ open: true, payeeId: uid, amount: amt }), [])
   const handleClosePayModal = useCallback(() => setPayModal((p) => ({ ...p, open: false })), [])
   const handleSelectGroup = useCallback((g: { id: string }) => setCurrentGroupId(g.id), [])
@@ -522,7 +518,6 @@ function PayUpAppInner() {
         {isAddModalOpen && (
           <AddExpenseModal
             isOpen
-            initialMode={addModalMode}
             editingExpense={editingExpense}
             onClose={handleCloseAddModal}
             currentUser={currentUser}
