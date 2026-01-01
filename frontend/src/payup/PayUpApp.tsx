@@ -364,6 +364,12 @@ function PayUpAppInner() {
     setEditingExpense(null)
   }, [])
   const handleClosePushPrompt = useCallback(() => setIsPushPromptOpen(false), [])
+  const handlePushPromptDismiss = useCallback(() => {
+    localStorage.setItem('payup_push_dismissed', 'true')
+  }, [])
+  const handlePushPromptSuccess = useCallback(() => {
+    showToast('Notifications enabled!')
+  }, [showToast])
   const handleCentralAdd = useCallback(() => openAddModal(), [openAddModal])
   const handlePayClick = useCallback((uid: string, amt: number) => setPayModal({ open: true, payeeId: uid, amount: amt }), [])
   const handleClosePayModal = useCallback(() => setPayModal((p) => ({ ...p, open: false })), [])
@@ -394,16 +400,21 @@ function PayUpAppInner() {
     }))
   }, [groupsQuery.data])
 
+  // Push notification prompt logic - check for returning users too
   useEffect(() => {
     if (authState.status !== 'authed') return
     if (!('Notification' in window)) return
 
+    // Skip if user permanently dismissed the prompt
+    const dismissed = localStorage.getItem('payup_push_dismissed')
+    if (dismissed === 'true') return
+
     let timer: number | undefined
     const run = async () => {
-      const permission = Notification.permission
       const subscribed = await pushManager.isSubscribed()
-      if (permission === 'default' && !subscribed) {
-        timer = window.setTimeout(() => setIsPushPromptOpen(true), 5000)
+      // Show prompt for any user who isn't subscribed yet (new AND returning users)
+      if (!subscribed) {
+        timer = window.setTimeout(() => setIsPushPromptOpen(true), 3000)
       }
     }
 
@@ -563,7 +574,12 @@ function PayUpAppInner() {
         )}
 
         <InstallPrompt />
-        <PushNotificationPrompt isOpen={isPushPromptOpen} onClose={handleClosePushPrompt} />
+        <PushNotificationPrompt
+          isOpen={isPushPromptOpen}
+          onClose={handleClosePushPrompt}
+          onDismiss={handlePushPromptDismiss}
+          onSuccess={handlePushPromptSuccess}
+        />
       </Suspense>
 
       {/* Confirmation Dialog */}

@@ -125,6 +125,29 @@ func (h *PaymentsHandler) Create(c *gin.Context) {
 		})
 	}
 
+	// Send push notification to receiver
+	go func(sender uuid.UUID, receiver uuid.UUID, amount float64) {
+		pushCtx, pushCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer pushCancel()
+
+		senderName := "Someone"
+		if u, err := h.Q.GetUserByID(pushCtx, sqlcutil.UUID(sender)); err == nil {
+			if u.Name != nil && strings.TrimSpace(*u.Name) != "" {
+				senderName = strings.TrimSpace(*u.Name)
+			} else {
+				senderName = u.Email
+			}
+		}
+
+		_ = SendPushToUser(
+			pushCtx,
+			h.Q,
+			receiver,
+			"💰 Payment Pending",
+			senderName+" sent you ₱"+util.CentsToMoneyString(util.MoneyToCents(amount))+" for approval",
+		)
+	}(senderID, receiverID, req.Amount)
+
 	c.JSON(http.StatusCreated, gin.H{
 		"id":         sqlcutil.UUIDToString(created.ID),
 		"groupId":    groupID.String(),
@@ -299,6 +322,33 @@ func (h *PaymentsHandler) review(c *gin.Context, newStatus sqlcdb.PaymentStatus)
 			GroupID: sqlcutil.UUIDToString(p.GroupID),
 		})
 	}
+
+	// Send push notification to sender about approval/rejection
+	senderUUID, _ := sqlcutil.UUIDToUUID(p.SenderID)
+	go func(sender uuid.UUID, receiver uuid.UUID, amount string, approved bool) {
+		pushCtx, pushCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer pushCancel()
+
+		receiverName := "Someone"
+		if u, err := h.Q.GetUserByID(pushCtx, sqlcutil.UUID(receiver)); err == nil {
+			if u.Name != nil && strings.TrimSpace(*u.Name) != "" {
+				receiverName = strings.TrimSpace(*u.Name)
+			} else {
+				receiverName = u.Email
+			}
+		}
+
+		var title, body string
+		if approved {
+			title = "✅ Payment Approved"
+			body = receiverName + " approved your ₱" + amount + " payment"
+		} else {
+			title = "❌ Payment Rejected"
+			body = receiverName + " rejected your ₱" + amount + " payment"
+		}
+
+		_ = SendPushToUser(pushCtx, h.Q, sender, title, body)
+	}(senderUUID, uid, p.Amount, newStatus == sqlcdb.PaymentStatusApproved)
 
 	c.JSON(http.StatusOK, gin.H{"status": string(newStatus)})
 }

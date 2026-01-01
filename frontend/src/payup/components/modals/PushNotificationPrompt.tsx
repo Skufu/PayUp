@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell, X } from 'lucide-react'
+import { Bell, X, Zap } from 'lucide-react'
 
 import { pushManager } from '../../push/pushManager'
 import { api } from '../../api/endpoints'
@@ -7,34 +7,51 @@ import { api } from '../../api/endpoints'
 type Props = {
   isOpen: boolean
   onClose: () => void
+  onSuccess?: () => void
+  onDismiss?: () => void
 }
 
-export function PushNotificationPrompt({ isOpen, onClose }: Props) {
+export function PushNotificationPrompt({ isOpen, onClose, onSuccess, onDismiss }: Props) {
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleEnable = async () => {
     setLoading(true)
+    setError(null)
     try {
       await pushManager.subscribe((endpoint, keys) => api.subscribePush(endpoint, keys))
+      onSuccess?.()
       onClose()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to enable notifications'
+      if (message.includes('denied')) {
+        setError('Permission denied. Enable notifications in your browser settings.')
+      } else {
+        setError(message)
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDismiss = () => {
+    onDismiss?.()
+    onClose()
   }
 
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={handleDismiss} />
 
       <div className="relative w-full max-w-md bg-[#131316] rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#1c1c21]">
           <h2 className="font-display text-xl font-bold text-white flex items-center gap-2">
-            <Bell className="text-[#dfff4f]" size={24} />
-            Enable Notifications
+            <Zap className="text-[#dfff4f]" size={24} />
+            Never Miss a Nudge!
           </h2>
-          <button onClick={onClose} className="p-2 bg-white/5 rounded-full hover:bg-white/10">
+          <button onClick={handleDismiss} className="p-2 bg-white/5 rounded-full hover:bg-white/10">
             <X size={18} />
           </button>
         </div>
@@ -45,22 +62,29 @@ export function PushNotificationPrompt({ isOpen, onClose }: Props) {
           </div>
 
           <div>
-            <h3 className="text-lg font-bold text-white mb-2">Stay Updated!</h3>
+            <h3 className="text-lg font-bold text-white mb-2">Get Nudged Instantly</h3>
             <p className="text-sm text-gray-400 leading-relaxed">
-              Get instant notifications when friends nudge you about payments, even when the app is closed.
+              Friends can nudge you when payments are due. Enable notifications to get reminded instantly — even when the app is closed.
             </p>
           </div>
+
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
 
           <div className="space-y-3">
             <button
               onClick={handleEnable}
               disabled={loading}
-              className="w-full bg-[#dfff4f] text-black font-bold py-4 rounded-xl hover:bg-[#ccee3e] transition-colors disabled:opacity-50"
+              className="w-full bg-[#dfff4f] text-black font-bold py-4 rounded-xl hover:bg-[#ccee3e] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? 'Enabling...' : 'Enable Notifications'}
+              <Bell size={20} />
+              {loading ? 'Enabling...' : 'Enable Nudge Notifications'}
             </button>
             <button
-              onClick={onClose}
+              onClick={handleDismiss}
               className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold py-4 rounded-xl transition-colors"
             >
               Maybe Later
@@ -73,4 +97,3 @@ export function PushNotificationPrompt({ isOpen, onClose }: Props) {
     </div>
   )
 }
-

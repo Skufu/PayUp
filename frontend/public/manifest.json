@@ -1,0 +1,48 @@
+{
+  "name": "PayUp - Split Bills & Track Payments",
+  "short_name": "PayUp",
+  "description": "Easy expense splitting and payment tracking for groups",
+  "start_url": "/auth/login",
+  "display": "standalone",
+  "background_color": "#0a0a0c",
+  "theme_color": "#dfff4f",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Add Expense",
+      "short_name": "Add",
+      "description": "Quickly add a new expense",
+      "url": "/app?action=add-expense",
+      "icons": [
+        {
+          "src": "/vite.svg",
+          "sizes": "any"
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "short_name": "Notifications",
+      "description": "View pending payments",
+      "url": "/app?tab=notifications",
+      "icons": [
+        {
+          "src": "/vite.svg",
+          "sizes": "any"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
