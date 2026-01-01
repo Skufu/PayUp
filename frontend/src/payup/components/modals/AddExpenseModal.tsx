@@ -1,5 +1,8 @@
-import { ArrowRight, X } from 'lucide-react'
+import { ArrowRight, Camera, X } from 'lucide-react'
 import { useLayoutEffect, useMemo, useState } from 'react'
+
+import { useSwipeableModal } from '../hooks/useSwipeableModal'
+import { ReceiptScanFlow } from './ReceiptScanFlow'
 
 import type { Expense, User } from '../../types'
 
@@ -42,6 +45,14 @@ export function AddExpenseModal({
   })
   const [excludedUsers, setExcludedUsers] = useState<Set<string>>(new Set())
   const [selectedCategory, setSelectedCategory] = useState<string>('Other')
+  const [showReceiptScanner, setShowReceiptScanner] = useState(false)
+
+  // Swipeable modal hook for gesture-based dismissal
+  const { modalRef, handlers, getModalStyle, getBackdropStyle } = useSwipeableModal({
+    onClose,
+    threshold: 25,
+    enabled: true,
+  })
 
   // Initialize state when editing - this is intentional to sync state with props
   useLayoutEffect(() => {
@@ -152,9 +163,26 @@ export function AddExpenseModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-[#131316] rounded-t-3xl sm:rounded-3xl border border-white/10 shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[85vh]">
-        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#1c1c21]">
+      <div
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+        style={getBackdropStyle()}
+      />
+      <div
+        ref={modalRef}
+        className="relative w-full max-w-md bg-[#131316] rounded-t-3xl sm:rounded-3xl border border-white/10 shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[85vh] select-none"
+        style={getModalStyle()}
+        {...handlers}
+      >
+        {/* Drag Handle - visible on mobile */}
+        <div
+          data-drag-handle
+          className="sm:hidden flex justify-center py-3 cursor-grab active:cursor-grabbing touch-none"
+        >
+          <div className="w-12 h-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors" />
+        </div>
+
+        <div className="p-6 pt-0 sm:pt-6 border-b border-white/5 flex justify-between items-center bg-[#1c1c21]" data-drag-handle>
           <h2 className="font-display text-xl font-bold text-white flex items-center gap-2">
             {editingExpense ? 'Edit Expense' : 'Add Expense'}
           </h2>
@@ -196,6 +224,17 @@ export function AddExpenseModal({
             </div>
           </div>
 
+          {/* Scan Receipt Button */}
+          {!editingExpense && (
+            <button
+              type="button"
+              onClick={() => setShowReceiptScanner(true)}
+              className="w-full py-4 rounded-xl border-2 border-dashed border-white/20 hover:border-[#dfff4f] text-gray-400 hover:text-[#dfff4f] transition-all flex items-center justify-center gap-3 group"
+            >
+              <Camera size={20} className="group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-bold uppercase tracking-wide">Scan Receipt</span>
+            </button>
+          )}
 
           <div>
             <label className="text-[10px] uppercase text-gray-500 font-mono mb-2 block tracking-wider">
@@ -356,6 +395,19 @@ export function AddExpenseModal({
           </button>
         </div>
       </div>
+
+      {/* Receipt Scan Flow Modal */}
+      <ReceiptScanFlow
+        isOpen={showReceiptScanner}
+        onClose={() => setShowReceiptScanner(false)}
+        currentUser={currentUser}
+        activeUsers={activeUsers}
+        onComplete={(expense) => {
+          onAdd(expense)
+          setShowReceiptScanner(false)
+          onClose()
+        }}
+      />
     </div>
   )
 }
