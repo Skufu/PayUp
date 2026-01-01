@@ -3,7 +3,7 @@
  * Optimized for Philippine receipt formats
  */
 
-import Tesseract from 'tesseract.js'
+import * as Tesseract from 'tesseract.js'
 
 export interface OCRResult {
     text: string
@@ -187,7 +187,7 @@ export async function performOCR(
     onProgress?.({ status: 'Initializing OCR engine...', progress: 20 })
 
     const result = await Tesseract.recognize(processedImage, 'eng', {
-        logger: (m) => {
+        logger: (m: { status: string; progress?: number }) => {
             if (m.status === 'recognizing text' && typeof m.progress === 'number') {
                 onProgress?.({
                     status: 'Reading receipt...',
@@ -202,7 +202,7 @@ export async function performOCR(
 
     const text = result.data.text
     const confidence = result.data.confidence
-    const lines = text.split('\n').filter((line) => line.trim())
+    const lines = text.split('\n').filter((line: string) => line.trim())
 
     onProgress?.({ status: 'Processing complete', progress: 100 })
 
@@ -233,7 +233,7 @@ export async function multiPassOCR(
     // Pass 2: High contrast preprocessing
     const processedImage = await preprocessImageHighContrast(imageSource)
     const pass2Result = await Tesseract.recognize(processedImage, 'eng', {
-        logger: (m) => {
+        logger: (m: { status: string; progress?: number }) => {
             if (m.status === 'recognizing text' && typeof m.progress === 'number') {
                 onProgress?.({
                     status: 'Enhanced scanning...',
@@ -246,7 +246,7 @@ export async function multiPassOCR(
     const pass2: OCRResult = {
         text: pass2Result.data.text,
         confidence: pass2Result.data.confidence,
-        lines: pass2Result.data.text.split('\n').filter((line) => line.trim()),
+        lines: pass2Result.data.text.split('\n').filter((line: string) => line.trim()),
     }
 
     onProgress?.({ status: 'Selecting best result...', progress: 90 })
