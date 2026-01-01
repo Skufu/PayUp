@@ -4,7 +4,7 @@
  */
 
 import { Camera, ImageIcon, Loader2, RotateCcw, X } from 'lucide-react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { compressImage } from '../../utils/imageCompression'
 import { multiPassOCR, type OCRProgress } from '../../utils/receiptOCR'
@@ -34,6 +34,18 @@ export function ReceiptScanner({ isOpen, onClose, onScanComplete }: Props) {
         setShowCamera(false)
     }, [stream])
 
+    // Effect to attach stream to video element and play
+    // This is needed for iOS Safari which requires explicit play() call
+    useEffect(() => {
+        if (stream && videoRef.current) {
+            videoRef.current.srcObject = stream
+            // iOS Safari needs explicit play()
+            videoRef.current.play().catch((err) => {
+                console.error('Video play failed:', err)
+            })
+        }
+    }, [stream, showCamera])
+
     const startCamera = async () => {
         try {
             setError(null)
@@ -46,9 +58,6 @@ export function ReceiptScanner({ isOpen, onClose, onScanComplete }: Props) {
             })
             setStream(mediaStream)
             setShowCamera(true)
-            if (videoRef.current) {
-                videoRef.current.srcObject = mediaStream
-            }
         } catch {
             setError('Could not access camera. Please try uploading an image instead.')
         }
