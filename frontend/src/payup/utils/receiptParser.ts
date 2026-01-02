@@ -859,8 +859,37 @@ export function parseReceipt(ocrText: string): ParsedReceipt {
         if (discount) break
     }
 
-    // Parse line items with fallback to flexible parser
-    for (const line of lines) {
+    // Find where the summary section begins (after items, before totals/accounting)
+    // Items come BEFORE lines like "Total", "Take-Out Total", "Subtotal", etc.
+    // Summary/accounting lines come AFTER
+    const summaryMarkers = [
+        /\b(?:TAKE[- ]?OUT\s*)?TOTAL\b/i,
+        /\bSUB[- ]?TOTAL\b/i,
+        /\bGRAND\s*TOTAL\b/i,
+        /\bAMOUNT\s*DUE\b/i,
+        /\bVATABLE\s*SALES?\b/i,
+        /\bVAT\s*EXEMPT/i,
+        /\bZERO\s*RATED/i,
+        /\bNET\s*(?:AMOUNT|SALES)\b/i,
+        /^[-=]{5,}$/,  // Separator lines often mark end of items
+    ]
+
+    // Find the first line that matches a summary marker
+    let summaryStartIndex = lines.length
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        for (const marker of summaryMarkers) {
+            if (marker.test(line)) {
+                summaryStartIndex = i
+                break
+            }
+        }
+        if (summaryStartIndex < lines.length) break
+    }
+
+    // Parse line items ONLY from lines before the summary section
+    for (let i = 0; i < summaryStartIndex; i++) {
+        const line = lines[i]
         if (shouldSkipLine(line)) continue
 
         // Try strict parsing first
