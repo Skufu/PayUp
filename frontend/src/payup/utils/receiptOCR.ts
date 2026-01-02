@@ -16,6 +16,160 @@ export interface OCRProgress {
     progress: number
 }
 
+// ============================================================================
+// EXIF ORIENTATION HANDLING
+// ============================================================================
+
+/**
+ * EXIF orientation values and their meanings:
+ * 1 = Normal (no rotation)
+ * 3 = 180° rotation
+ * 6 = 90° CW rotation (common on iOS portrait photos)
+ * 8 = 90° CCW rotation
+ */
+
+/**
+ * Read EXIF orientation from image file
+ * Parses the first 64KB to find EXIF header and orientation tag
+ */
+async function getExifOrientation(file: Blob): Promise<number> {
+    return new Promise((resolve) => {
+        const reader = new FileReader()
+        // Only read first 64KB - EXIF header is always at the start
+        reader.readAsArrayBuffer(file.slice(0, 65536))
+
+        reader.onload = () => {
+            const view = new DataView(reader.result as ArrayBuffer)
+
+            // Check for JPEG SOI marker
+            if (view.getUint16(0, false) !== 0xFFD8) {
+                resolve(1)
+                return
+            }
+
+            let offset = 2
+            const length = view.byteLength
+
+            while (offset < length) {
+                if (view.getUint8(offset) !== 0xFF) {
+                    resolve(1)
+                    return
+                }
+
+                const marker = view.getUint8(offset + 1)
+
+                // APP1 marker (EXIF)
+                if (marker === 0xE1) {
+                    const exifOffset = offset + 4
+
+                    // Check for "Exif" string
+                    if (view.getUint32(exifOffset, false) !== 0x45786966) {
+                        resolve(1)
+                        return
+                    }
+
+                    const tiffOffset = exifOffset + 6
+                    const littleEndian = view.getUint16(tiffOffset, false) === 0x4949
+
+                    const ifdOffset = view.getUint32(tiffOffset + 4, littleEndian) + tiffOffset
+                    const numEntries = view.getUint16(ifdOffset, littleEndian)
+
+                    for (let i = 0; i < numEntries; i++) {
+                        const entryOffset = ifdOffset + 2 + i * 12
+                        const tag = view.getUint16(entryOffset, littleEndian)
+
+                        // Orientation tag = 0x0112
+                        if (tag === 0x0112) {
+                            const orientation = view.getUint16(entryOffset + 8, littleEndian)
+                            resolve(orientation)
+                            return
+                        }
+                    }
+
+                    resolve(1)
+                    return
+                }
+
+                // Skip other markers
+                if (marker === 0xD8 || marker === 0xD9) {
+                    offset += 2
+                } else {
+                    offset += 2 + view.getUint16(offset + 2, false)
+                }
+            }
+
+            resolve(1)
+        }
+
+        reader.onerror = () => resolve(1)
+    })
+}
+
+/**
+ * Correct image orientation based on EXIF metadata
+ * Returns a data URL of the correctly oriented image
+ */
+async function correctImageOrientation(imageSource: File | Blob | string): Promise<string> {
+    // Only process File/Blob - data URLs don't have EXIF
+    if (typeof imageSource === 'string') {
+        return imageSource
+    }
+
+    const orientation = await getExifOrientation(imageSource)
+
+    // No rotation needed
+    if (orientation === 1) {
+        return URL.createObjectURL(imageSource)
+    }
+
+    return new Promise((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => {
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
+            if (!ctx) {
+                reject(new Error('Could not get canvas context'))
+                return
+            }
+
+            // Swap dimensions for 90° rotations
+            if (orientation === 6 || orientation === 8) {
+                canvas.width = img.height
+                canvas.height = img.width
+            } else {
+                canvas.width = img.width
+                canvas.height = img.height
+            }
+
+            // Apply rotation transform
+            switch (orientation) {
+                case 3: // 180°
+                    ctx.translate(canvas.width, canvas.height)
+                    ctx.rotate(Math.PI)
+                    break
+                case 6: // 90° CW
+                    ctx.translate(canvas.width, 0)
+                    ctx.rotate(Math.PI / 2)
+                    break
+                case 8: // 90° CCW
+                    ctx.translate(0, canvas.height)
+                    ctx.rotate(-Math.PI / 2)
+                    break
+            }
+
+            ctx.drawImage(img, 0, 0)
+            resolve(canvas.toDataURL('image/jpeg', 0.95))
+        }
+
+        img.onerror = () => reject(new Error('Failed to load image for orientation correction'))
+        img.src = URL.createObjectURL(imageSource)
+    })
+}
+
+// ============================================================================
+// IMAGE PROCESSING UTILITIES
+// ============================================================================
+
 /**
  * Apply 3x3 convolution kernel to image data
  */
@@ -154,10 +308,14 @@ function adaptiveThreshold(
 /**
  * Enhanced preprocessing for Philippine thermal receipts
  * Uses adaptive thresholding and sharpening
+ * Handles EXIF orientation for iOS uploads
  */
 export async function preprocessImage(
     imageSource: File | Blob | string
 ): Promise<string> {
+    // Step 0: Correct EXIF orientation (fixes iOS sideways photos)
+    const orientedSource = await correctImageOrientation(imageSource)
+
     return new Promise((resolve, reject) => {
         const img = new Image()
         img.crossOrigin = 'anonymous'
@@ -180,8 +338,8 @@ export async function preprocessImage(
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
 
             // Get image data for processing
-            let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-            let data = imageData.data
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+            const data = imageData.data
 
             // Step 1: Convert to grayscale
             for (let i = 0; i < data.length; i += 4) {
@@ -220,22 +378,21 @@ export async function preprocessImage(
         }
 
         img.onerror = () => reject(new Error('Failed to load image'))
-
-        if (imageSource instanceof File || imageSource instanceof Blob) {
-            img.src = URL.createObjectURL(imageSource)
-        } else {
-            img.src = imageSource
-        }
+        img.src = orientedSource
     })
 }
 
 /**
  * Alternative preprocessing with Otsu's thresholding
  * Used in multi-pass OCR for receipts with more uniform lighting
+ * Now includes same noise reduction + sharpening as Pass 1
  */
 export async function preprocessImageOtsu(
     imageSource: File | Blob | string
 ): Promise<string> {
+    // Step 0: Correct EXIF orientation (fixes iOS sideways photos)
+    const orientedSource = await correctImageOrientation(imageSource)
+
     return new Promise((resolve, reject) => {
         const img = new Image()
         img.crossOrigin = 'anonymous'
@@ -256,19 +413,36 @@ export async function preprocessImageOtsu(
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
             const data = imageData.data
 
-            // Convert to grayscale and apply stronger contrast
-            const contrast = 2.0
-            const factor = (259 * (contrast * 100 + 255)) / (255 * (259 - contrast * 100))
-
+            // Step 1: Convert to grayscale
             for (let i = 0; i < data.length; i += 4) {
                 const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114
-                const adjusted = Math.min(255, Math.max(0, factor * (gray - 128) + 128))
-                data[i] = adjusted
-                data[i + 1] = adjusted
-                data[i + 2] = adjusted
+                data[i] = gray
+                data[i + 1] = gray
+                data[i + 2] = gray
             }
 
-            // Otsu's binarization
+            // Step 2: Apply median filter to reduce thermal paper noise
+            const filtered = medianFilter(data, canvas.width, canvas.height)
+            for (let i = 0; i < data.length; i++) {
+                data[i] = filtered[i]
+            }
+
+            // Step 3: Apply sharpening to enhance text edges
+            const sharpened = sharpenImage(data, canvas.width, canvas.height)
+            for (let i = 0; i < data.length; i++) {
+                data[i] = sharpened[i]
+            }
+
+            // Step 4: Apply stronger contrast for Otsu
+            const contrast = 2.0
+            const factor = (259 * (contrast * 100 + 255)) / (255 * (259 - contrast * 100))
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = Math.min(255, Math.max(0, factor * (data[i] - 128) + 128))
+                data[i + 1] = Math.min(255, Math.max(0, factor * (data[i + 1] - 128) + 128))
+                data[i + 2] = Math.min(255, Math.max(0, factor * (data[i + 2] - 128) + 128))
+            }
+
+            // Step 5: Otsu's binarization
             const histogram = new Array(256).fill(0)
             for (let i = 0; i < data.length; i += 4) {
                 histogram[Math.floor(data[i])]++
@@ -313,17 +487,13 @@ export async function preprocessImageOtsu(
         }
 
         img.onerror = () => reject(new Error('Failed to load image'))
-
-        if (imageSource instanceof File || imageSource instanceof Blob) {
-            img.src = URL.createObjectURL(imageSource)
-        } else {
-            img.src = imageSource
-        }
+        img.src = orientedSource
     })
 }
 
 /**
  * Perform OCR on an image using Tesseract.js
+ * Uses PSM 6 (SINGLE_BLOCK) for optimal receipt parsing
  */
 export async function performOCR(
     imageSource: File | Blob | string,
@@ -335,7 +505,8 @@ export async function performOCR(
     const processedImage = await preprocessImage(imageSource)
     onProgress?.({ status: 'Initializing OCR engine...', progress: 20 })
 
-    const result = await Tesseract.recognize(processedImage, 'eng', {
+    // Create worker and configure for receipts
+    const worker = await Tesseract.createWorker('eng', 1, {
         logger: (m: { status: string; progress?: number }) => {
             if (m.status === 'recognizing text' && typeof m.progress === 'number') {
                 onProgress?.({
@@ -345,6 +516,14 @@ export async function performOCR(
             }
         },
     })
+
+    // PSM 6 = SINGLE_BLOCK - optimal for receipts (uniform block of text)
+    await worker.setParameters({
+        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+    })
+
+    const result = await worker.recognize(processedImage)
+    await worker.terminate()
 
     const text = result.data.text
     const confidence = result.data.confidence
@@ -358,6 +537,7 @@ export async function performOCR(
 /**
  * Multi-pass OCR for difficult receipts
  * Tries different preprocessing methods to get best result
+ * Both passes use PSM 6 (SINGLE_BLOCK) for optimal receipt parsing
  */
 export async function multiPassOCR(
     imageSource: File | Blob | string,
@@ -378,7 +558,9 @@ export async function multiPassOCR(
 
     // Pass 2: Otsu's thresholding (better for uniform lighting)
     const processedImage = await preprocessImageOtsu(imageSource)
-    const pass2Result = await Tesseract.recognize(processedImage, 'eng', {
+
+    // Create worker and configure with PSM 6 (SINGLE_BLOCK)
+    const worker = await Tesseract.createWorker('eng', 1, {
         logger: (m: { status: string; progress?: number }) => {
             if (m.status === 'recognizing text' && typeof m.progress === 'number') {
                 onProgress?.({
@@ -388,6 +570,13 @@ export async function multiPassOCR(
             }
         },
     })
+
+    await worker.setParameters({
+        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+    })
+
+    const pass2Result = await worker.recognize(processedImage)
+    await worker.terminate()
 
     const pass2: OCRResult = {
         text: pass2Result.data.text,

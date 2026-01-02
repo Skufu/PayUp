@@ -24,6 +24,8 @@ export interface ParsedReceipt {
     merchant?: string
     date?: string
     rawText: string
+    parseConfidence: number      // 0-100 parse quality score
+    validationWarnings: string[] // Human-readable issues found
 }
 
 // ============================================================================
@@ -82,6 +84,7 @@ const JOLLIBEE_ABBREVIATIONS: Record<string, string> = {
  * McDonald's Philippines abbreviations
  */
 const MCDONALDS_ABBREVIATIONS: Record<string, string> = {
+    // Main items
     MCFL: 'McFloat',
     MCSP: 'McSpaghetti',
     MCDO: 'McChicken',
@@ -94,6 +97,24 @@ const MCDONALDS_ABBREVIATIONS: Record<string, string> = {
     'HASH BRN': 'Hash Brown',
     MCNUG: 'McNuggets',
     'HAPPY ML': 'Happy Meal',
+    // From actual receipts
+    'T CKNFIL': 'Chicken Fillet',
+    'CKNFIL': 'Chicken Fillet',
+    'CKNFL': 'Chicken Fillet',
+    'T CKNFIL RICE': 'Chicken Fillet with Rice',
+    'OREO MCFLURRY': 'Oreo McFlurry',
+    'MCFLURRY': 'McFlurry',
+    'MCCHICKEN': 'McChicken',
+    'MCSPAGHETTI': 'McSpaghetti',
+    'CHEESEBURGER': 'Cheeseburger',
+    'BURGER MCDO': 'Burger McDo',
+    'CRISPY CHKN': 'Crispy Chicken',
+    'CRISPY CHICKEN': 'Crispy Chicken',
+    'SUNDAE': 'Sundae',
+    'HOT FUDGE': 'Hot Fudge Sundae',
+    'COKE': 'Coke',
+    'SPRITE': 'Sprite',
+    'ICED TEA': 'Iced Tea',
 }
 
 /**
@@ -232,7 +253,7 @@ const STORE_PATTERNS = [
     { pattern: /PIZZA\s*HUT/i, name: 'Pizza Hut' },
 ]
 
-// Lines to skip (headers, footers, etc.)
+// Lines to skip (headers, footers, BIR accounting lines, etc.)
 const SKIP_PATTERNS = [
     /^[-=_*]+$/,
     /^THANK\s*YOU/i,
@@ -253,6 +274,42 @@ const SKIP_PATTERNS = [
     /^={3,}$/,
     /^QTY\s+(?:DESCRIPTION|ITEM)/i,
     /^DESCRIPTION\s+AMOUNT/i,
+    // BIR-required accounting lines - these should NEVER be items
+    /ZERO\s*RATED\s*SALES?/i,
+    /JERO\s*RATED\s*SALES?/i, // OCR misread of Zero
+    /VAT\s*EXEMPT\s*SALES?/i,
+    /VAT\s*EXEMPTION/i,
+    /VATABLE\s*SALES?/i,
+    /VATEABLE\s*SALES?/i, // OCR misread
+    /VAT\s*AMOUNT/i,
+    /TAKE[\s-]*OUT\s*TOTAL/i,
+    /CASH\s*TENDER/i,
+    /CASH\s*TENDERED/i,
+    /^CHANGE\b/i,
+    /^CASH\b/i,
+    /CREDIT\s*CARD/i,
+    /GCASH/i,
+    /MAYA/i,
+    /PAYMAYA/i,
+    /^ACC\s*NO/i,
+    /^SUPPLIER/i,
+    /^VALID\s*UNTIL/i,
+    /^DATE\s*ISSUED/i,
+    /^PERMIT\s*TO\s*USE/i,
+    /^PTU:/i,
+    /^MIN:/i,
+    /^HARDWARE\s*SERIAL/i,
+    /^CREW\s*ID/i,
+    /INVOICE.*RECEIPT/i,
+    /^YOUR\s*ORDER\s*NUMBER/i,
+    /^CUSTOMER.*INFORMATION/i,
+    /^NAME\s*:/i,
+    /^ADDRESS\s*:/i,
+    /^BUSINESS\s*STYLE/i,
+    /GOLDEN\s*ARCHES/i, // McDonald's corporate
+    /GIANT\s*ARCHES/i, // McDonald's corporate OCR variant
+    /^FOR\s*ONLINE\s*DELIVERY/i,
+    /SURVEY\s*CODE/i,
 ]
 
 // ============================================================================
@@ -261,25 +318,51 @@ const SKIP_PATTERNS = [
 
 /**
  * Apply common OCR corrections for Philippine thermal receipts
+ * Enhanced with comprehensive digit and word corrections
  */
 function correctOCRMistakes(text: string): string {
     return text
-        // Common letter/number confusions
-        .replace(/[O0](\.[\d]{2})/g, '0$1') // O.00 -> 0.00
-        .replace(/(\d)[lI]/g, '$11') // 1l -> 11
-        .replace(/[lI](\d)/g, '1$1') // l9 -> 19
-        .replace(/[S5](\.[\d]{2})/g, '5$1') // S.00 -> 5.00
-        .replace(/[B8](\.[\d]{2})/g, '8$1') // B.00 -> 8.00
+        // Common letter/number confusions in prices
+        .replace(/[O0](\.\d{2})/g, '0$1')     // O.00 -> 0.00
+        .replace(/(\d)[lI]/g, '$11')          // 1l -> 11
+        .replace(/[lI](\d)/g, '1$1')          // l9 -> 19
+        .replace(/[S5](\.\d{2})/g, '5$1')     // S.00 -> 5.00
+        .replace(/[B8](\.\d{2})/g, '8$1')     // B.00 -> 8.00
+
+        // Additional digit confusions in the middle of numbers
+        .replace(/(\d)O(\d)/g, '$10$2')       // 1O5 -> 105
+        .replace(/(\d)o(\d)/g, '$10$2')       // 1o5 -> 105
+        .replace(/S(\d{2,})/g, '5$1')         // S00 -> 500
+        .replace(/(\d)S(\d)/g, '$15$2')       // 9S0 -> 950
+        .replace(/Z(\d)/g, '2$1')             // Z5 -> 25
+        .replace(/(\d)Z/g, '$12')             // 5Z -> 52
+        .replace(/(\d)G/g, '$16')             // 5G -> 56 (G looks like 6)
+        .replace(/G(\d)/g, '6$1')             // G5 -> 65
+
         // Missing decimal points (common in faded thermal)
         .replace(/(\d{2,3})(00)\s*$/gm, '$1.$2')
+
         // Fix peso symbol
         .replace(/[Pp]\s*(\d)/g, '₱$1')
-        // Fix common words
+
+        // Fix common words - basic
         .replace(/T0TAL/gi, 'TOTAL')
         .replace(/SUBT0TAL/gi, 'SUBTOTAL')
         .replace(/CHANGER/gi, 'CHANGE')
         .replace(/VAI/gi, 'VAT')
         .replace(/IOTAL/gi, 'TOTAL')
+
+        // Fix common words - enhanced for PH receipts
+        .replace(/VATAB[IL]E/gi, 'VATABLE')
+        .replace(/SUBTOT[A4]L/gi, 'SUBTOTAL')
+        .replace(/D[1I]SCOUNT/gi, 'DISCOUNT')
+        .replace(/SERV[1I]CE/gi, 'SERVICE')
+        .replace(/CH[A4]NGE/gi, 'CHANGE')
+        .replace(/T[O0]TAL/gi, 'TOTAL')
+        .replace(/AM[O0]UNT/gi, 'AMOUNT')
+
+        // Fix merged lines (price immediately followed by text)
+        .replace(/(\d{2,}\.\d{2})([A-Z])/g, '$1\n$2')
 }
 
 /**
@@ -377,18 +460,45 @@ function extractQuantity(text: string): { quantity: number; cleanedText: string 
 }
 
 /**
- * Try to parse column-based receipt line (QTY | ITEM | PRICE)
+ * Try to parse column-based receipt line
+ * Supports formats:
+ * - QTY ITEM PRICE TOTAL (McDonald's format)
+ * - QTY ITEM PRICE
+ * - ITEM PRICE
  */
 function parseColumnarLine(line: string): ParsedItem | null {
-    // Pattern: number at start, text in middle, price at end
-    // e.g., "1    SPICY CHJOL ML     169.00"
-    const match = line.match(/^(\d+)\s{2,}(.+?)\s{2,}([\d,.]+)$/)
-    if (match) {
-        const quantity = parseInt(match[1])
-        const price = parseFloat(match[3].replace(/,/g, ''))
+    // McDonald's 4-column format: "1 T CknFil Rice   65.00   65.00"
+    // Pattern: quantity, item name, unit price, total price
+    const fourColMatch = line.match(/^(\d+)\s+(.+?)\s{2,}([\d,.]+)\s{2,}([\d,.]+)$/)
+    if (fourColMatch) {
+        const quantity = parseInt(fourColMatch[1])
+        const unitPrice = parseFloat(fourColMatch[3].replace(/,/g, ''))
+        const totalPrice = parseFloat(fourColMatch[4].replace(/,/g, ''))
+
+        // Validate: total should roughly equal qty * unit price
+        if (quantity > 0 && quantity <= 20 && totalPrice > 0 && totalPrice < 100000) {
+            // Use total price as it's more reliable
+            let name = fourColMatch[2].trim()
+            name = expandAbbreviations(name)
+
+            return {
+                id: crypto.randomUUID(),
+                name,
+                quantity,
+                unitPrice: Math.round(unitPrice * 100) / 100,
+                totalPrice: totalPrice,
+            }
+        }
+    }
+
+    // 3-column format: "1    SPICY CHJOL ML     169.00"
+    const threeColMatch = line.match(/^(\d+)\s{2,}(.+?)\s{2,}([\d,.]+)$/)
+    if (threeColMatch) {
+        const quantity = parseInt(threeColMatch[1])
+        const price = parseFloat(threeColMatch[3].replace(/,/g, ''))
 
         if (quantity > 0 && quantity <= 20 && price > 0 && price < 100000) {
-            let name = match[2].trim()
+            let name = threeColMatch[2].trim()
             name = expandAbbreviations(name)
 
             return {
@@ -397,6 +507,27 @@ function parseColumnarLine(line: string): ParsedItem | null {
                 quantity,
                 unitPrice: Math.round((price / quantity) * 100) / 100,
                 totalPrice: price,
+            }
+        }
+    }
+
+    // Single space separated: "1 T CknFil Rice 65.00 65.00"
+    // Match: digit(s) at start, words in middle, two numbers at end
+    const spaceSepMatch = line.match(/^(\d+)\s+([A-Za-z].+?)\s+(\d+\.\d{2})\s+(\d+\.\d{2})$/)
+    if (spaceSepMatch) {
+        const quantity = parseInt(spaceSepMatch[1])
+        const totalPrice = parseFloat(spaceSepMatch[4])
+
+        if (quantity > 0 && quantity <= 20 && totalPrice > 0 && totalPrice < 10000) {
+            let name = spaceSepMatch[2].trim()
+            name = expandAbbreviations(name)
+
+            return {
+                id: crypto.randomUUID(),
+                name,
+                quantity,
+                unitPrice: Math.round((totalPrice / quantity) * 100) / 100,
+                totalPrice: totalPrice,
             }
         }
     }
@@ -507,11 +638,147 @@ function extractDate(lines: string[]): string | undefined {
 }
 
 // ============================================================================
+// VALIDATION & FALLBACK PARSING
+// ============================================================================
+
+/**
+ * Flexible fallback parser for lines that didn't match strict patterns
+ * Extracts items by finding all prices and using heuristics
+ */
+function parseLineFlexible(line: string): ParsedItem | null {
+    const trimmed = line.trim()
+
+    // Extract ALL prices from the line
+    const priceMatches = [...trimmed.matchAll(/\d+\.\d{2}/g)]
+    if (priceMatches.length === 0) return null
+
+    // Take the last price as total (most common format)
+    const totalPrice = parseFloat(priceMatches[priceMatches.length - 1][0])
+    if (totalPrice <= 0 || totalPrice > 10000) return null
+
+    // Extract quantity if present at start
+    const qtyMatch = trimmed.match(/^(\d+)\s+/)
+    let quantity = 1
+    if (qtyMatch) {
+        const parsed = parseInt(qtyMatch[1])
+        if (parsed > 0 && parsed <= 20) {
+            quantity = parsed
+        }
+    }
+
+    // Everything else is the item name
+    let name = trimmed
+        .replace(/\d+\.\d{2}/g, '')   // Remove prices
+        .replace(/^(\d+)\s+/, '')      // Remove quantity
+        .replace(/[₱P]\s*/g, '')       // Remove currency
+        .replace(/\s+/g, ' ')          // Normalize whitespace
+        .trim()
+
+    if (name.length < 2) return null
+
+    // Skip if it looks like a summary line
+    if (/^(TOTAL|SUBTOTAL|VAT|CHANGE|CASH|NET|AMOUNT)/i.test(name)) return null
+
+    name = expandAbbreviations(name)
+
+    return {
+        id: crypto.randomUUID(),
+        name,
+        quantity,
+        unitPrice: Math.round((totalPrice / quantity) * 100) / 100,
+        totalPrice,
+    }
+}
+
+/**
+ * Validate parsed receipt data and calculate confidence score
+ * Returns a score from 0-100 and a list of warnings
+ */
+function validateParsedReceipt(receipt: {
+    items: ParsedItem[]
+    total: number
+    subtotal?: number
+    vat?: number
+    serviceCharge?: number
+    discount?: number
+}): { confidence: number; warnings: string[] } {
+    const warnings: string[] = []
+    let score = 100
+
+    // Check 1: Items sum vs expected total (most important)
+    const itemsSum = receipt.items.reduce((s, i) => s + i.totalPrice, 0)
+
+    // Calculate what items should sum to:
+    // For most PH receipts: items = subtotal, and total = subtotal + VAT
+    // Or if no subtotal: items ≈ total - VAT - service + discount
+    let expectedSum = receipt.subtotal || receipt.total
+    if (!receipt.subtotal && receipt.total > 0) {
+        expectedSum = receipt.total
+        if (receipt.vat) expectedSum -= receipt.vat
+        if (receipt.serviceCharge) expectedSum -= receipt.serviceCharge
+        if (receipt.discount) expectedSum += receipt.discount
+    }
+
+    const tolerance = Math.max(expectedSum * 0.15, 5) // 15% or ₱5 minimum tolerance
+    const difference = Math.abs(itemsSum - expectedSum)
+
+    if (expectedSum > 0 && difference > tolerance) {
+        score -= 25
+        warnings.push(`Items sum (₱${itemsSum.toFixed(2)}) differs from expected (₱${expectedSum.toFixed(2)}) by ₱${difference.toFixed(2)}`)
+    }
+
+    // Check 2: Reasonable item prices for PH fast food (₱15-2000 typical)
+    for (const item of receipt.items) {
+        if (item.unitPrice < 5) {
+            score -= 5
+            warnings.push(`Low price: "${item.name}" @ ₱${item.unitPrice.toFixed(2)}`)
+        }
+        if (item.unitPrice > 2000) {
+            score -= 5
+            warnings.push(`High price: "${item.name}" @ ₱${item.unitPrice.toFixed(2)}`)
+        }
+        // Check quantity makes sense
+        if (item.quantity > 10) {
+            score -= 3
+            warnings.push(`High quantity: ${item.quantity}x "${item.name}"`)
+        }
+    }
+
+    // Check 3: Found a total
+    if (receipt.total === 0) {
+        score -= 20
+        warnings.push('No total found on receipt')
+    }
+
+    // Check 4: Found at least one item
+    if (receipt.items.length === 0) {
+        score -= 30
+        warnings.push('No items found on receipt')
+    }
+
+    // Check 5: Total is reasonable for the number of items
+    if (receipt.items.length > 0 && receipt.total > 0) {
+        const avgPerItem = receipt.total / receipt.items.length
+        if (avgPerItem < 10) {
+            score -= 10
+            warnings.push(`Average per item (₱${avgPerItem.toFixed(2)}) seems too low`)
+        }
+        if (avgPerItem > 1000) {
+            score -= 10
+            warnings.push(`Average per item (₱${avgPerItem.toFixed(2)}) seems high for fast food`)
+        }
+    }
+
+    return { confidence: Math.max(0, Math.min(100, score)), warnings }
+}
+
+// ============================================================================
 // MAIN PARSING FUNCTION
 // ============================================================================
 
 /**
  * Parse OCR text into structured receipt data
+ * Includes validation and confidence scoring
  */
 export function parseReceipt(ocrText: string): ParsedReceipt {
     // Apply OCR corrections
@@ -592,15 +859,25 @@ export function parseReceipt(ocrText: string): ParsedReceipt {
         if (discount) break
     }
 
-    // Parse line items
+    // Parse line items with fallback to flexible parser
     for (const line of lines) {
         if (shouldSkipLine(line)) continue
 
-        const item = parseItemLine(line)
+        // Try strict parsing first
+        let item = parseItemLine(line)
+
+        // Fallback to flexible parsing if strict fails
+        if (!item) {
+            item = parseLineFlexible(line)
+        }
+
         if (item) {
             // Skip if this looks like the total or subtotal
             if (Math.abs(item.totalPrice - total) < 0.01) continue
             if (subtotal && Math.abs(item.totalPrice - subtotal) < 0.01) continue
+            // Skip if it matches VAT or service charge
+            if (vat && Math.abs(item.totalPrice - vat) < 0.01) continue
+            if (serviceCharge && Math.abs(item.totalPrice - serviceCharge) < 0.01) continue
 
             items.push(item)
         }
@@ -614,6 +891,16 @@ export function parseReceipt(ocrText: string): ParsedReceipt {
         if (discount) total -= discount
     }
 
+    // Validate the parsed receipt
+    const { confidence, warnings } = validateParsedReceipt({
+        items,
+        total,
+        subtotal,
+        vat,
+        serviceCharge,
+        discount,
+    })
+
     return {
         items,
         subtotal,
@@ -625,6 +912,8 @@ export function parseReceipt(ocrText: string): ParsedReceipt {
         merchant,
         date,
         rawText: ocrText,
+        parseConfidence: confidence,
+        validationWarnings: warnings,
     }
 }
 
