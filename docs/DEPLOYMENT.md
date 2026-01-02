@@ -1,5 +1,15 @@
 # PayUp Deployment Guide
 
+> Deploy PayUp to Vercel (frontend) and Render (backend) with managed PostgreSQL.
+
+---
+
+## Keywords
+
+`deployment` `Vercel` `Render` `Docker` `Neon` `Supabase` `PostgreSQL` `environment variables` `CORS` `JWT` `HTTPS` `SSL` `health check` `CI/CD` `GitHub Actions`
+
+---
+
 ## Architecture
 
 ```
@@ -9,21 +19,46 @@
 └─────────────────┘     └─────────────────┘     └─────────────────┘
 ```
 
+| Component | Platform | Notes |
+|-----------|----------|-------|
+| Frontend | Vercel | Auto-deploys on push |
+| Backend | Render | Docker deployment |
+| Database | Neon/Supabase | Managed PostgreSQL |
+
 ---
 
-## 1. Database Setup (Neon or Supabase)
+## Deployment Checklist
+
+- [ ] Database provisioned (Neon or Supabase)
+- [ ] Migrations run against production database
+- [ ] Backend deployed on Render
+- [ ] Frontend deployed on Vercel
+- [ ] `vercel.json` updated with Render URL
+- [ ] `CORS_ORIGINS` set to Vercel URL
+- [ ] Health check passing
+- [ ] HTTPS working
+
+---
+
+## 1. Database Setup
 
 ### Option A: Neon (Recommended)
-1. Go to [neon.tech](https://neon.tech) and create account
-2. Create a new project
-3. Copy the connection string (looks like `postgres://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`)
+
+1. Create account at [neon.tech](https://neon.tech)
+2. Create new project
+3. Copy connection string:
+   ```
+   postgres://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require
+   ```
 
 ### Option B: Supabase
-1. Go to [supabase.com](https://supabase.com) and create project
+
+1. Create project at [supabase.com](https://supabase.com)
 2. Go to Settings → Database → Connection string
-3. Copy the URI (use "Transaction" mode for serverless)
+3. Copy URI (use "Transaction" mode for serverless)
 
 ### Run Migrations
+
 ```bash
 cd backend
 DATABASE_URL="your-connection-string" go run cmd/migrate/main.go up
@@ -33,47 +68,61 @@ DATABASE_URL="your-connection-string" go run cmd/migrate/main.go up
 
 ## 2. Backend Deployment (Render)
 
-### Automatic Deploy
-1. Go to [render.com](https://render.com) and connect your GitHub repo
-2. Select "New Web Service"
-3. Choose "Docker" as runtime
-4. Set root directory to `backend`
-5. Render will detect the `render.yaml` and configure automatically
+### Setup
 
-### Environment Variables (set in Render dashboard)
+1. Go to [render.com](https://render.com)
+2. Connect your GitHub repo
+3. Select "New Web Service"
+4. Choose "Docker" as runtime
+5. Set root directory to `backend`
+6. Render detects `render.yaml` automatically
+
+### Environment Variables
+
+Set in Render dashboard:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | ✅ | PostgreSQL connection string |
-| `JWT_SECRET` | ✅ | Generate: `openssl rand -base64 32` |
-| `CORS_ORIGINS` | ✅ | Your Vercel URL: `https://your-app.vercel.app` |
+| `JWT_SECRET` | ✅ | `openssl rand -base64 32` |
+| `CORS_ORIGINS` | ✅ | `https://your-app.vercel.app` |
+| `GIN_MODE` | ✅ | `release` |
 | `GOOGLE_CLIENT_ID` | Optional | For Google OAuth |
-| `CLOUDINARY_URL` | Optional | For image uploads |
-| `VAPID_PUBLIC_KEY` | Optional | For push notifications |
-| `VAPID_PRIVATE_KEY` | Optional | For push notifications |
+| `CLOUDINARY_CLOUD_NAME` | Optional | For uploads |
+| `CLOUDINARY_API_KEY` | Optional | For uploads |
+| `CLOUDINARY_API_SECRET` | Optional | For uploads |
+| `VAPID_PUBLIC_KEY` | Optional | For push |
+| `VAPID_PRIVATE_KEY` | Optional | For push |
+| `VAPID_SUBJECT` | Optional | For push |
 
-### Get Your Render URL
-After deploy, your API will be at: `https://payup-api.onrender.com`
+### Your Render URL
+
+After deploy: `https://payup-api.onrender.com`
 
 ---
 
 ## 3. Frontend Deployment (Vercel)
 
-### Automatic Deploy
-1. Go to [vercel.com](https://vercel.com) and import your GitHub repo
-2. Vercel detects `vercel.json` automatically
-3. Set root directory to `.` (project root, not frontend)
+### Setup
 
-### Environment Variables (set in Vercel dashboard)
+1. Go to [vercel.com](https://vercel.com)
+2. Import your GitHub repo
+3. Vercel detects `vercel.json` automatically
+4. Set root directory to `.` (project root)
+
+### Environment Variables
+
+Set in Vercel dashboard:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `VITE_API_BASE_URL` | Optional | Leave empty - uses rewrites |
+| `VITE_API_BASE_URL` | No | Leave empty (uses rewrites) |
 | `VITE_GOOGLE_CLIENT_ID` | Optional | For Google OAuth button |
 | `VITE_VAPID_PUBLIC_KEY` | Optional | For push notifications |
 
-### Update API URL in vercel.json
-Edit `vercel.json` and replace `payup-api.onrender.com` with your actual Render URL:
+### Update vercel.json
+
+Edit `vercel.json` with your Render URL:
 
 ```json
 {
@@ -88,29 +137,32 @@ Edit `vercel.json` and replace `payup-api.onrender.com` with your actual Render 
 
 ---
 
-## 4. GitHub Actions (Optional Auto-Deploy)
+## 4. GitHub Actions (Optional)
 
 ### Required Secrets
-Set these in GitHub → Settings → Secrets and variables → Actions:
+
+Set in GitHub → Settings → Secrets:
 
 | Secret | How to Get |
 |--------|------------|
-| `RENDER_DEPLOY_HOOK_URL` | Render → Your Service → Settings → Deploy Hook |
+| `RENDER_DEPLOY_HOOK_URL` | Render → Service → Settings → Deploy Hook |
 | `VERCEL_TOKEN` | Vercel → Settings → Tokens → Create |
 | `VERCEL_ORG_ID` | Run `vercel` CLI, check `.vercel/project.json` |
 | `VERCEL_PROJECT_ID` | Run `vercel` CLI, check `.vercel/project.json` |
 
 ---
 
-## 5. Post-Deployment Checklist
+## 5. Verification
 
-### Verify Backend
+### Health Check
+
 ```bash
 curl https://your-api.onrender.com/health
-# Should return: {"status":"ok"}
+# Expected: {"status":"ok"}
 ```
 
-### Verify CORS
+### CORS Check
+
 ```bash
 curl -I -X OPTIONS https://your-api.onrender.com/v1/auth/login \
   -H "Origin: https://your-app.vercel.app" \
@@ -118,7 +170,8 @@ curl -I -X OPTIONS https://your-api.onrender.com/v1/auth/login \
 # Should include: Access-Control-Allow-Origin: https://your-app.vercel.app
 ```
 
-### Verify Security Headers
+### Security Headers Check
+
 ```bash
 curl -I https://your-api.onrender.com/health
 # Should include:
@@ -131,32 +184,88 @@ curl -I https://your-api.onrender.com/health
 
 ## 6. Troubleshooting
 
-### "CORS error" in browser
-- Check `CORS_ORIGINS` env var matches your Vercel URL exactly
-- Include `https://` prefix
-- No trailing slash
+### CORS Error in Browser
 
-### "502 Bad Gateway" on Render
-- Check Render logs for startup errors
-- Verify `DATABASE_URL` is correct
-- Ensure migrations have run
+| Problem | Solution |
+|---------|----------|
+| Origin not allowed | Check `CORS_ORIGINS` matches Vercel URL exactly |
+| Missing https:// | Include `https://` prefix |
+| Trailing slash | Remove trailing slash from URL |
 
-### "Invalid token" errors
-- Verify `JWT_SECRET` is set
-- Ensure it's the same across all instances
+### 502 Bad Gateway on Render
+
+| Problem | Solution |
+|---------|----------|
+| Startup error | Check Render logs |
+| Database connection | Verify `DATABASE_URL` |
+| Missing migrations | Run `goose up` |
+
+### Invalid Token Errors
+
+| Problem | Solution |
+|---------|----------|
+| JWT_SECRET not set | Set in Render dashboard |
+| Different secrets | Ensure same secret across instances |
 
 ### Render Free Tier Sleep
-- Free tier services sleep after 15min inactivity
-- First request after sleep takes ~30s to cold start
-- Consider upgrading to Starter ($7/mo) for always-on
+
+| Problem | Solution |
+|---------|----------|
+| 30s cold start | Services sleep after 15min inactivity |
+| Always-on needed | Upgrade to Starter ($7/mo) |
+
+### Rate Limit Errors
+
+| Problem | Solution |
+|---------|----------|
+| 429 on login | Wait 15 minutes or reduce attempts |
+| Check headers | Look at `X-RateLimit-*` and `Retry-After` |
 
 ---
 
-## 7. Production Security Checklist
+## 7. Production Checklist
 
-- [ ] `GIN_MODE=release` is set on Render
-- [ ] `JWT_SECRET` is a random 32+ character string
-- [ ] `CORS_ORIGINS` only includes your production domain
-- [ ] Database uses SSL (`?sslmode=require` in URL)
-- [ ] No `.env` files committed to git
+- [ ] `GIN_MODE=release` set on Render
+- [ ] `JWT_SECRET` is random 32+ characters
+- [ ] `CORS_ORIGINS` only includes production domain
+- [ ] Database uses SSL (`?sslmode=require`)
+- [ ] No `.env` files in git
 - [ ] GitHub secrets configured (not in code)
+- [ ] Health check responding
+- [ ] HTTPS enforced
+
+---
+
+## Environment Variables Reference
+
+### Backend
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORT` | No | 8080 | HTTP port |
+| `DATABASE_URL` | Yes | - | PostgreSQL connection |
+| `JWT_SECRET` | Yes | - | Token signing secret |
+| `ACCESS_TOKEN_TTL_MINUTES` | No | 15 | Access token lifetime |
+| `REFRESH_TOKEN_TTL_HOURS` | No | 720 | Refresh token lifetime |
+| `CORS_ORIGINS` | Prod | - | Allowed origins |
+| `GIN_MODE` | Prod | - | `release` for production |
+| `DB_MAX_CONNS` | No | 25 | Max database connections |
+| `GOOGLE_CLIENT_ID` | Optional | - | Google OAuth |
+| `CLOUDINARY_*` | Optional | - | Image uploads |
+| `VAPID_*` | Optional | - | Push notifications |
+
+### Frontend
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `VITE_API_BASE_URL` | No | - | API URL (uses proxy in dev) |
+| `VITE_GOOGLE_CLIENT_ID` | Optional | - | Google OAuth button |
+| `VITE_VAPID_PUBLIC_KEY` | Optional | - | Push subscriptions |
+
+---
+
+## See Also
+
+- [Reference Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/REFERENCE.md) – Environment variables list
+- [Docker Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/technical/docker.md) – Container setup
+- [BACKEND.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/BACKEND.md) – Server configuration

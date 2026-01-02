@@ -2,41 +2,103 @@
 
 Split expenses, track balances, settle up.
 
+---
+
+## Keywords
+
+`expense splitting` `group expenses` `bill splitting` `balance tracking` `payment settlement` `debt management` `nudge reminders` `PWA` `React` `Go` `PostgreSQL`
+
+---
+
+## What is PayUp?
+
+PayUp is a full-stack expense-splitting application for groups. Key features:
+
+- **Groups**: Create shared wallets with friends, family, or roommates
+- **Expenses**: Track who paid and split costs equally, by exact amounts, or percentages
+- **Balances**: Real-time calculation of who owes whom
+- **Payments**: Settle debts with GCash/Maya QR codes and approval flow
+- **Nudges**: Send reminders to debtors with push notifications
+- **PWA**: Install on mobile for offline access
+
+---
+
+## Key Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Group** | A collection of users sharing expenses |
+| **Expense** | A cost paid by one member, split among participants |
+| **Split** | How an expense is divided (equal, exact, percentage, hybrid) |
+| **Balance** | Net amount owed/owing within a group |
+| **Payment** | Settlement from debtor to creditor |
+| **Nudge** | Payment reminder notification |
+| **Transfer** | Special expense created on payment approval |
+
+---
+
 ## Documentation
 
-### Technical Guides
-- [AI Index](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/AI_INDEX.md) (start here)
-- [Architecture](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/ARCHITECTURE.md)
-- [Deployment Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/technical/deployment-quickstart.md)
-- [Docker Setup](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/technical/docker.md)
-- [API Reference](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/API.md)
+| Document | Purpose |
+|----------|---------|
+| [Reference Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/REFERENCE.md) | Quick navigation, feature→code map, API routes |
+| [CLAUDE.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/CLAUDE.md) | Comprehensive development guide |
+| [Architecture](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/ARCHITECTURE.md) | System design and data flow |
+| [API Reference](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/API.md) | Request/response formats |
+| [Database](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/DATABASE.md) | Schema and relationships |
+| [Frontend](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/FRONTEND.md) | React patterns and structure |
+| [Backend](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/BACKEND.md) | Go/Gin patterns |
+| [Deployment](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/DEPLOYMENT.md) | Vercel/Render setup |
+| [UX Spec](file:///c:/Users/ADRIAN/Github/skufu/PayUp/UX_SPEC.md) | UI/UX patterns and decisions |
 
-### Detailed Modules
-- [Frontend docs](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/FRONTEND.md) | [Backend docs](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/BACKEND.md)
-- [Database Schema](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/DATABASE.md)
-- [PWA Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/guides/pwa-guide.md)
-- [Push Notifications Plan](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/plans/push-notifications.md)
+---
 
-## Repo layout
+## Directory Structure
 
-- `frontend/`: React + Vite PWA UI
-- `backend/`: Go (Gin) API + Postgres (sqlc + migrations)
-- `docker-compose.yml`: build+run frontend+backend containers (expects an external Postgres)
-- `backend/docker-compose.yml`: Postgres for local dev
-- `env.example`: env vars reference
-- `dev.sh`: runs backend (Go) + frontend (Vite) for local dev
+```
+PayUp/
+├── frontend/                 # React 19 + Vite PWA
+│   ├── src/payup/
+│   │   ├── api/              # API client and endpoints
+│   │   ├── auth/             # Authentication provider
+│   │   ├── components/       # UI components and modals
+│   │   ├── pages/            # Route pages (landing, auth, join)
+│   │   ├── push/             # Push notification manager
+│   │   ├── utils/            # Utilities (receipt parser, etc.)
+│   │   └── PayUpApp.tsx      # Main app component
+│   └── public/sw.js          # Service worker (offline + push)
+│
+├── backend/                  # Go + Gin API
+│   ├── cmd/api/              # Server entrypoint
+│   ├── cmd/migrate/          # Migration runner
+│   ├── internal/
+│   │   ├── auth/             # JWT tokens and middleware
+│   │   ├── balance/          # Balance calculation logic
+│   │   ├── db/sqlcdb/        # Generated database code (sqlc)
+│   │   ├── events/           # SSE event hub
+│   │   ├── handlers/         # HTTP route handlers
+│   │   ├── middleware/       # CORS, rate limiting, security
+│   │   └── services/         # Upload service (Cloudinary)
+│   ├── migrations/           # Goose SQL migrations
+│   └── sql/
+│       ├── schema.sql        # Full database schema
+│       └── queries/          # Named SQL queries for sqlc
+│
+├── docs/                     # Documentation
+└── docker-compose.yml        # Container orchestration
+```
 
-## Local development
+---
 
-### Quick Start (Recommended)
+## Quick Start
 
-**With Make (Linux/macOS):**
+### With Make (Linux/macOS)
 ```bash
 make setup   # First-time setup
 make dev     # Start dev server
 ```
 
-**With Bash (Windows/Git Bash):**
+### With Bash (Windows/Git Bash)
 ```bash
 ./setup.sh   # First-time setup
 ./dev.sh     # Start dev server
@@ -44,76 +106,85 @@ make dev     # Start dev server
 
 Open http://localhost:5173 in your browser.
 
-### Available Commands
+---
 
-Run `make help` to see all commands:
+## Available Commands
 
 | Command | Description |
 |---------|-------------|
-| `make setup` | First-time setup |
-| `make dev` | Start dev server (backend + frontend) |
+| `make setup` | First-time setup (install deps, run migrations) |
+| `make dev` | Start dev server (backend :8080 + frontend :5173) |
 | `make dev-docker` | Start full stack via Docker Compose |
-| `make db` / `make db-stop` | Start/stop Postgres |
+| `make db` / `make db-stop` | Start/stop Postgres container |
 | `make migrate` | Run database migrations |
 | `make test` | Run backend tests |
 | `make lint` | Run linters |
 | `make clean` | Stop containers and remove volumes |
 
-### Manual Setup (Alternative)
+---
+
+## Manual Setup
 
 <details>
 <summary>Click to expand manual setup steps</summary>
 
-#### 1) Environment variables
+### 1. Environment Variables
 
 Copy and edit:
-
 - `env.example` → `.env`
 
-Minimum:
-- `DATABASE_URL` (Postgres)
-- `JWT_SECRET`
+Required:
+- `DATABASE_URL` (PostgreSQL connection string)
+- `JWT_SECRET` (secret for signing tokens)
 
 Optional:
-- `CLOUDINARY_*` (uploads: QR + payment proof)
-- `VAPID_*` (push notifications)
-- `VITE_API_BASE_URL` (frontend API base; defaults to relative)
+- `CLOUDINARY_*` (for QR/proof uploads)
+- `VAPID_*` (for push notifications)
+- `GOOGLE_CLIENT_ID` (for Google OAuth)
 
-#### 2) Start Postgres
-
-From repo root:
+### 2. Start Postgres
 
 ```bash
 docker compose -f backend/docker-compose.yml up -d
 ```
 
-#### 3) Start app (backend + frontend)
-
-From repo root:
+### 3. Start App
 
 ```bash
 ./dev.sh
 ```
 
-What it does:
-- Backend: `go run ./backend/cmd/api`
-- Frontend: `npm --prefix ./frontend run dev -- --host`
+This runs:
+- Backend: `go run ./backend/cmd/api` (port 8080)
+- Frontend: `npm --prefix ./frontend run dev` (port 5173)
 
 </details>
 
+---
 
 ## Docker
 
-### Frontend + backend containers
+### Frontend + Backend Containers
 
 ```bash
 docker compose up --build
 ```
 
-Notes:
-- Root `docker-compose.yml` does **not** include Postgres; it expects `DATABASE_URL` to point to a reachable Postgres instance.
-- For local Docker, you can run Postgres via `backend/docker-compose.yml` and point `DATABASE_URL` at it.
+> **Note**: Root `docker-compose.yml` expects an external Postgres. Set `DATABASE_URL` to a reachable instance.
 
-## Health check
+---
 
-- `GET /health`
+## Health Check
+
+```bash
+curl http://localhost:8080/health
+# Returns: {"status":"ok"}
+```
+
+---
+
+## See Also
+
+- [Reference Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/REFERENCE.md) – Quick navigation and search
+- [CLAUDE.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/CLAUDE.md) – Comprehensive development guide
+- [PWA Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/guides/pwa-guide.md) – Progressive Web App setup

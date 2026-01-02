@@ -17,7 +17,7 @@ This runs backend on :8080 and frontend on :5173.
 2. Minimum: `DATABASE_URL`, `JWT_SECRET`
 3. Start Postgres: `docker compose -f backend/docker-compose.yml up -d`
 
-**Documentation hub:** Start with `docs/AI_INDEX.md` for a complete feature → code map.
+**Documentation hub:** Start with `docs/REFERENCE.md` for a complete feature → code map.
 
 ## Essential Commands
 
@@ -185,12 +185,12 @@ docker compose -f backend/docker-compose.yml up -d
 ### Understanding Existing Features
 
 **Use the docs as your guide:**
-- `docs/AI_INDEX.md` - Feature → code mappings, API route table, search recipes
-- `docs/ARCHITECTURE.md` - High-level flow, source-of-truth files
-- `docs/API.md` - Request/response formats
-- `docs/DATABASE.md` - Schema details, relationships
-- `docs/FRONTEND.md` - React Query patterns, component structure
-- `docs/BACKEND.md` - Handler patterns, middleware details
+- `docs/REFERENCE.md` - Feature → code mappings, API route table, glossary, common questions
+- `docs/ARCHITECTURE.md` - System design, data flow diagrams
+- `docs/API.md` - Request/response formats, rate limiting
+- `docs/DATABASE.md` - Schema details, relationships, ERD
+- `docs/FRONTEND.md` - React Query patterns, component structure, PWA
+- `docs/BACKEND.md` - Handler patterns, middleware, dependency injection
 
 **Key entrypoints:**
 - Backend routes: `backend/internal/server/server.go`
@@ -310,7 +310,7 @@ See `docs/DEPLOYMENT.md` for detailed deployment instructions.
 
 ## API Route Reference
 
-See `docs/AI_INDEX.md` for complete list. Key routes:
+See `docs/REFERENCE.md` for complete list. Key routes:
 
 **Auth:**
 - `POST /v1/auth/register` - Create account
