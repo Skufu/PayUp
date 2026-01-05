@@ -295,12 +295,13 @@ Full reference in [`env.example`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/env
 
 ## See Also
 
-- [README.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/README.md) – Quick start and setup
-- [CLAUDE.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/CLAUDE.md) – Comprehensive development guide
-- [ARCHITECTURE.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/ARCHITECTURE.md) – System design and flow
-- [API.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/API.md) – API request/response details
-- [DATABASE.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/DATABASE.md) – Schema documentation
-- [FRONTEND.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/FRONTEND.md) – React/Vite patterns
-- [BACKEND.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/BACKEND.md) – Go/Gin patterns
-- [DEPLOYMENT.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/DEPLOYMENT.md) – Deployment guide
-- [UX_SPEC.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/UX_SPEC.md) – UX decisions and patterns
+- [README.md](/README.md) – Quick start and setup
+- [CLAUDE.md](/CLAUDE.md) – Comprehensive development guide
+- [LOCAL-SETUP.md](/docs/LOCAL-SETUP.md) – **Local development setup guide**
+- [ARCHITECTURE.md](/docs/ARCHITECTURE.md) – System design and flow
+- [API.md](/docs/API.md) – API request/response details
+- [DATABASE.md](/docs/DATABASE.md) – Schema documentation
+- [FRONTEND.md](/docs/FRONTEND.md) – React/Vite patterns
+- [BACKEND.md](/docs/BACKEND.md) – Go/Gin patterns
+- [DEPLOYMENT.md](/docs/DEPLOYMENT.md) – Production deployment guide
+- [UX_SPEC.md](/UX_SPEC.md) – UX decisions and patterns
