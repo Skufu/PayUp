@@ -1,7 +1,7 @@
-import { useState, useLayoutEffect, useCallback } from 'react'
 import { Check, LogIn, MapPin, Plus, User as UserIcon, Users } from 'lucide-react'
 
 import type { Group, User } from '../../types'
+import { ModalWrapper } from './ModalWrapper'
 
 type Props = {
   isOpen: boolean
@@ -137,62 +137,31 @@ export function SideMenu({
   onClose,
   ...contentProps
 }: Props) {
-  const [isClosing, setIsClosing] = useState(false)
-  const [shouldRender, setShouldRender] = useState(false)
-
-  // Sync animation state with isOpen prop - intentional pattern for slide animation
-  useLayoutEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
-    if (isOpen) {
-      setShouldRender(true)
-      setIsClosing(false)
-    }
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, [isOpen])
-
-  const handleClose = useCallback(() => {
-    setIsClosing(true)
-    // Wait for animation to complete before actually closing
-    setTimeout(() => {
-      setShouldRender(false)
-      setIsClosing(false)
-      onClose()
-    }, 280) // Slightly less than animation duration to prevent flash
-  }, [onClose])
-
-  if (!shouldRender && !isOpen) return null
-
   return (
-    <div className="absolute inset-0 z-50 flex">
-      <div
-        className={`absolute inset-0 bg-black/80 backdrop-blur-sm ${isClosing ? 'animate-fade-out' : ''}`}
-        onClick={handleClose}
+    <ModalWrapper isOpen={isOpen} onClose={onClose} variant="side" zIndex="z-50" className="h-full bg-[#131316] border-r border-white/10 shadow-2xl">
+      <SideMenuContent
+        {...contentProps}
+        onSelectGroup={(g) => {
+          contentProps.onSelectGroup(g)
+          onClose()
+        }}
+        onCreateGroup={() => {
+          contentProps.onCreateGroup()
+          onClose()
+        }}
+        onJoinGroup={() => {
+          contentProps.onJoinGroup()
+          onClose()
+        }}
+        onOpenProfile={() => {
+          contentProps.onOpenProfile()
+          onClose()
+        }}
+        onOpenMembers={() => {
+          contentProps.onOpenMembers()
+          onClose()
+        }}
       />
-      <div className={`relative w-[80%] max-w-xs h-full bg-[#131316] border-r border-white/10 shadow-2xl ${isClosing ? 'animate-slide-out-left' : 'animate-slide-in-left'}`}>
-        <SideMenuContent
-          {...contentProps}
-          onSelectGroup={(g) => {
-            contentProps.onSelectGroup(g)
-            handleClose()
-          }}
-          onCreateGroup={() => {
-            contentProps.onCreateGroup()
-            handleClose()
-          }}
-          onJoinGroup={() => {
-            contentProps.onJoinGroup()
-            handleClose()
-          }}
-          onOpenProfile={() => {
-            contentProps.onOpenProfile()
-            handleClose()
-          }}
-          onOpenMembers={() => {
-            contentProps.onOpenMembers()
-            handleClose()
-          }}
-        />
-      </div>
-    </div>
+    </ModalWrapper>
   )
 }

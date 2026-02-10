@@ -3,6 +3,7 @@ import { useLayoutEffect, useMemo, useState } from 'react'
 
 import { useSwipeableModal } from '../hooks/useSwipeableModal'
 import { ReceiptScanFlow } from './ReceiptScanFlow'
+import { ModalWrapper } from './ModalWrapper'
 
 import type { Expense, User } from '../../types'
 
@@ -48,7 +49,7 @@ export function AddExpenseModal({
   const [showReceiptScanner, setShowReceiptScanner] = useState(false)
 
   // Swipeable modal hook for gesture-based dismissal
-  const { modalRef, handlers, getModalStyle, getBackdropStyle } = useSwipeableModal({
+  const { modalRef, handlers, getModalStyle } = useSwipeableModal({
     onClose,
     threshold: 25,
     enabled: true,
@@ -159,18 +160,11 @@ export function AddExpenseModal({
     onClose()
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-        style={getBackdropStyle()}
-      />
+    <ModalWrapper isOpen={isOpen} onClose={onClose} variant="bottom-sheet">
       <div
         ref={modalRef}
-        className="relative w-full max-w-md bg-[#131316] rounded-t-3xl sm:rounded-3xl border border-white/10 shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[85vh] select-none"
+        className="w-full max-w-md bg-[#131316] rounded-t-3xl sm:rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[85vh] select-none"
         style={getModalStyle()}
         {...handlers}
       >
@@ -408,6 +402,6 @@ export function AddExpenseModal({
           onClose()
         }}
       />
-    </div>
+    </ModalWrapper>
   )
 }

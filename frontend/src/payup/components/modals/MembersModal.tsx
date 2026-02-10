@@ -1,6 +1,7 @@
 import { LogOut, UserMinus, Users, X } from 'lucide-react'
 
 import type { User } from '../../types'
+import { ModalWrapper } from './ModalWrapper'
 
 type Props = {
   isOpen: boolean
@@ -13,12 +14,9 @@ type Props = {
 }
 
 export function MembersModal({ isOpen, onClose, activeUsers, balances, currentUser, onLeave, onRemove }: Props) {
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-[#131316] rounded-t-3xl sm:rounded-3xl border border-white/10 shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[70vh]">
+    <ModalWrapper isOpen={isOpen} onClose={onClose} variant="bottom-sheet">
+      <div className="w-full max-w-md bg-[#131316] rounded-t-3xl sm:rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[70vh]">
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#1c1c21]">
           <h2 className="font-display text-xl font-bold text-white flex items-center gap-2">
             <Users className="text-[#dfff4f]" /> Group Members
@@ -75,7 +73,7 @@ export function MembersModal({ isOpen, onClose, activeUsers, balances, currentUs
           })}
         </div>
       </div>
-    </div>
+    </ModalWrapper>
   )
 }
 

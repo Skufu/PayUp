@@ -1,65 +1,39 @@
 /**
- * Unit tests for Receipt OCR utilities (Gemini Vision API)
- * Mocks the Gemini SDK to test OCR logic without real API calls
+ * Tests for the receipt OCR utility (backend proxy version)
+ * Mocks the apiRequest function to avoid real backend calls
  */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// ============================================================================
-// MOCK SETUP - Must be before imports
-// ============================================================================
-
-const mockGenerateContent = vi.fn()
-const mockGetGenerativeModel = vi.fn(() => ({
-    generateContent: mockGenerateContent,
+// Mock apiRequest before importing the module under test
+const mockApiRequest = vi.fn()
+vi.mock('../api/client', () => ({
+    apiRequest: (...args: unknown[]) => mockApiRequest(...args),
 }))
-
-vi.mock('@google/generative-ai', () => {
-    // Use a class so it works with `new GoogleGenerativeAI(...)`
-    class MockGoogleGenerativeAI {
-        getGenerativeModel = mockGetGenerativeModel
-    }
-    return { GoogleGenerativeAI: MockGoogleGenerativeAI }
-})
-
-// Stub the env var so getGeminiClient() doesn't throw
-vi.stubEnv('VITE_GEMINI_API_KEY', 'test-api-key-12345')
 
 import { performOCR, multiPassOCR } from './receiptOCR'
 
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-function makeGeminiResponse(text: string) {
-    return {
-        response: {
-            text: () => text,
-        },
-    }
-}
-
 const SAMPLE_RECEIPT_TEXT = `JOLLIBEE
-VAT REG TIN: 001-234-567
+Store #1234
+123 Main St, Manila
 
-1    SPICY CHJOL ML     169.00
-2    YUM                 45.00
+Chickenjoy 1pc      175.00
+Jolly Spaghetti      75.00
+Coke Float           55.00
 
-VATABLE SALES            191.96
-VAT 12%                   23.04
-TOTAL                    214.00
+SUBTOTAL            305.00
+VAT (12%)            36.60
+TOTAL               341.60
 
-CASH TENDERED            500.00
-CHANGE                   286.00`
-
-// ============================================================================
-// performOCR
-// ============================================================================
+01/15/2025 14:30
+Thank you!`
 
 describe('performOCR', () => {
     beforeEach(() => {
         vi.clearAllMocks()
-        mockGenerateContent.mockResolvedValue(makeGeminiResponse(SAMPLE_RECEIPT_TEXT))
+        mockApiRequest.mockResolvedValue({
+            text: SAMPLE_RECEIPT_TEXT,
+            confidence: 0.92,
+        })
     })
 
     it('should return OCR result with text, confidence, and lines', async () => {
@@ -67,117 +41,98 @@ describe('performOCR', () => {
 
         expect(result.text).toBe(SAMPLE_RECEIPT_TEXT)
         expect(result.lines.length).toBeGreaterThan(0)
-        expect(result.confidence).toBeGreaterThan(0)
+        expect(result.confidence).toBe(92) // 0.92 * 100
     })
 
-    it('should call Gemini with the image data', async () => {
-        await performOCR('data:image/jpeg;base64,/9j/fakedata123')
+    it('should call the backend /v1/ocr endpoint', async () => {
+        await performOCR('data:image/jpeg;base64,/9j/fake')
 
-        expect(mockGetGenerativeModel).toHaveBeenCalledWith({
-            model: 'gemini-2.0-flash',
-        })
-        expect(mockGenerateContent).toHaveBeenCalledTimes(1)
-
-        // Verify it sends inline image data
-        const callArgs = mockGenerateContent.mock.calls[0][0]
-        expect(callArgs).toHaveLength(2) // prompt + image
-        expect(callArgs[1]).toHaveProperty('inlineData')
-        expect(callArgs[1].inlineData).toHaveProperty('data')
-        expect(callArgs[1].inlineData).toHaveProperty('mimeType')
+        expect(mockApiRequest).toHaveBeenCalledWith(
+            '/v1/ocr',
+            expect.objectContaining({
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            })
+        )
     })
 
-    it('should invoke progress callbacks', async () => {
+    it('should send image data in the request body', async () => {
+        const imageData = 'data:image/jpeg;base64,/9j/fake'
+        await performOCR(imageData)
+
+        const callArgs = mockApiRequest.mock.calls[0]
+        const body = JSON.parse(callArgs[1].body)
+        expect(body.imageData).toBe(imageData)
+    })
+
+    it('should call progress callback at each stage', async () => {
         const onProgress = vi.fn()
-
         await performOCR('data:image/jpeg;base64,/9j/fake', onProgress)
 
-        expect(onProgress).toHaveBeenCalled()
-        // Should start at 0 and end at 100
-        const calls = onProgress.mock.calls
-        expect(calls[0][0].progress).toBe(0)
-        expect(calls[calls.length - 1][0].progress).toBe(100)
+        expect(onProgress).toHaveBeenCalledWith(
+            expect.objectContaining({ status: 'Preparing image...', progress: 0 })
+        )
+        expect(onProgress).toHaveBeenCalledWith(
+            expect.objectContaining({ status: 'Sending to server...', progress: 20 })
+        )
+        expect(onProgress).toHaveBeenCalledWith(
+            expect.objectContaining({ status: 'Reading receipt...', progress: 40 })
+        )
+        expect(onProgress).toHaveBeenCalledWith(
+            expect.objectContaining({ status: 'Processing result...', progress: 80 })
+        )
+        expect(onProgress).toHaveBeenCalledWith(
+            expect.objectContaining({ status: 'Processing complete', progress: 100 })
+        )
     })
 
-    it('should filter empty lines from result', async () => {
-        mockGenerateContent.mockResolvedValue(
-            makeGeminiResponse('Line 1\n\n\nLine 2\n\n')
-        )
+    it('should filter empty lines from the result', async () => {
+        mockApiRequest.mockResolvedValue({
+            text: 'Line 1\n\n\nLine 2\n  \nLine 3',
+            confidence: 0.85,
+        })
 
         const result = await performOCR('data:image/jpeg;base64,/9j/fake')
-
-        expect(result.lines).toEqual(['Line 1', 'Line 2'])
+        expect(result.lines).toEqual(['Line 1', 'Line 2', 'Line 3'])
     })
 
     it('should propagate API errors', async () => {
-        mockGenerateContent.mockRejectedValue(new Error('API rate limit exceeded'))
+        mockApiRequest.mockRejectedValue(new Error('Network error'))
 
-        await expect(
-            performOCR('data:image/jpeg;base64,/9j/fake')
-        ).rejects.toThrow('API rate limit exceeded')
+        await expect(performOCR('data:image/jpeg;base64,/9j/fake')).rejects.toThrow('Network error')
+    })
+
+    it('should convert confidence from 0-1 to 0-100 range', async () => {
+        mockApiRequest.mockResolvedValue({
+            text: 'Some text',
+            confidence: 0.95,
+        })
+
+        const result = await performOCR('data:image/jpeg;base64,/9j/fake')
+        expect(result.confidence).toBe(95)
     })
 })
-
-// ============================================================================
-// multiPassOCR
-// ============================================================================
 
 describe('multiPassOCR', () => {
     beforeEach(() => {
         vi.clearAllMocks()
-        mockGenerateContent.mockResolvedValue(makeGeminiResponse(SAMPLE_RECEIPT_TEXT))
+        mockApiRequest.mockResolvedValue({
+            text: SAMPLE_RECEIPT_TEXT,
+            confidence: 0.92,
+        })
     })
 
-    it('should return the same result as performOCR (single pass)', async () => {
+    it('should delegate to performOCR (single pass is sufficient)', async () => {
         const result = await multiPassOCR('data:image/jpeg;base64,/9j/fake')
 
         expect(result.text).toBe(SAMPLE_RECEIPT_TEXT)
-        expect(mockGenerateContent).toHaveBeenCalledTimes(1)
+        expect(mockApiRequest).toHaveBeenCalledTimes(1)
     })
 
     it('should pass progress callback through', async () => {
         const onProgress = vi.fn()
-
         await multiPassOCR('data:image/jpeg;base64,/9j/fake', onProgress)
 
         expect(onProgress).toHaveBeenCalled()
-    })
-})
-
-// ============================================================================
-// Confidence estimation
-// ============================================================================
-
-describe('confidence estimation', () => {
-    beforeEach(() => {
-        vi.clearAllMocks()
-    })
-
-    it('should give high confidence for receipt-like text', async () => {
-        mockGenerateContent.mockResolvedValue(
-            makeGeminiResponse(SAMPLE_RECEIPT_TEXT)
-        )
-
-        const result = await performOCR('data:image/jpeg;base64,/9j/fake')
-
-        // Receipt text has TOTAL, prices, VAT, date patterns → high score
-        expect(result.confidence).toBeGreaterThanOrEqual(85)
-    })
-
-    it('should give low confidence for non-receipt text', async () => {
-        mockGenerateContent.mockResolvedValue(
-            makeGeminiResponse('Hello World')
-        )
-
-        const result = await performOCR('data:image/jpeg;base64,/9j/fake')
-
-        expect(result.confidence).toBeLessThan(80)
-    })
-
-    it('should give very low confidence for empty text', async () => {
-        mockGenerateContent.mockResolvedValue(makeGeminiResponse(''))
-
-        const result = await performOCR('data:image/jpeg;base64,/9j/fake')
-
-        expect(result.confidence).toBeLessThanOrEqual(10)
     })
 })

@@ -157,6 +157,10 @@ func New(deps Deps) *gin.Engine {
 		push := v1.Group("/push", auth.Middleware(deps.Issuer))
 		push.POST("/subscribe", puh.Subscribe)
 		push.DELETE("/unsubscribe", puh.Unsubscribe)
+
+		// OCR proxy (keeps Gemini API key server-side)
+		ocrh := &handlers.OCRHandler{}
+		v1.POST("/ocr", auth.Middleware(deps.Issuer), ocrh.PerformOCR)
 	}
 
 	return r
