@@ -217,21 +217,19 @@ export function LandingPage() {
                 step: "01",
                 title: "Create a Group",
                 desc: "Start a group for your trip, apartment, or dinner squad. Invite friends via link.",
-                // Replace with your actual image path:
-                // image: "/images/step-1-create-group.png"
-                image: null,
+                image: "/images/step-1-create-group.png",
               },
               {
                 step: "02",
                 title: "Add Expenses",
                 desc: "Snap a receipt or manually add who paid and who owes. We handle the math.",
-                image: null,
+                image: "/images/step-2-add-expense.png",
               },
               {
                 step: "03",
                 title: "Settle Up",
                 desc: "See who owes what at a glance. Send a nudge or settle with one tap.",
-                image: null,
+                image: "/images/step-3-settle-up.png",
               },
             ].map((item, i) => (
               <motion.div
