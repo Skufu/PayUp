@@ -294,7 +294,7 @@ showToast('Failed to save', 'error');
 
 [`utils/receiptParser.ts`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/utils/receiptParser.ts):
 
-- Uses Tesseract.js for OCR
+- Uses Google Gemini API for OCR
 - Image preprocessing with OpenCV.js
 - Multi-pass recognition
 - Post-processing corrections for Philippine receipts

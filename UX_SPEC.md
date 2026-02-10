@@ -271,7 +271,7 @@ color: #dfff4f;
 | Responsive categories | ✅ Done | Grid on md+ |
 | Haptic feedback | ✅ Done | Navigator.vibrate |
 | Swipe-down modal | ✅ Done | Gesture dismiss |
-| Receipt OCR | ✅ Done | Tesseract.js |
+| Receipt OCR | ✅ Done | Gemini API |
 | User exclusion in splits | ✅ Done | Hybrid mode |
 
 ---
