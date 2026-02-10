@@ -10,13 +10,17 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/vite.svg",
+      "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ],
-  "categories": ["finance", "productivity", "utilities"],
+  "categories": [
+    "finance",
+    "productivity",
+    "utilities"
+  ],
   "shortcuts": [
     {
       "name": "Add Expense",
@@ -25,7 +29,7 @@
       "url": "/app?action=add-expense",
       "icons": [
         {
-          "src": "/vite.svg",
+          "src": "/favicon.svg",
           "sizes": "any"
         }
       ]
@@ -37,7 +41,7 @@
       "url": "/app?tab=notifications",
       "icons": [
         {
-          "src": "/vite.svg",
+          "src": "/favicon.svg",
           "sizes": "any"
         }
       ]
