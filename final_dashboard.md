@@ -1,0 +1,70 @@
+- generic [ref=e6]:
+  - generic [ref=e8]:
+    - button [ref=e10] [cursor=pointer]:
+      - img [ref=e11]
+    - generic [ref=e12]:
+      - heading "Weekend Getaway" [level=1] [ref=e168]
+      - paragraph [ref=e14]: Trip Dashboard
+    - button "TU" [ref=e17] [cursor=pointer]:
+      - generic [ref=e18]: TU
+  - main [ref=e19]:
+    - generic [ref=e21]:
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - heading "Net Position" [level=2] [ref=e27]
+          - generic [ref=e30]: Settled
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - text: All Good
+        - generic [ref=e34]:
+          - generic [ref=e35]: ₱0.00
+          - paragraph [ref=e36]: You are all squared up!
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - paragraph [ref=e39]: Group Total
+            - paragraph [ref=e40]: ₱1,250.00
+          - generic [ref=e41]:
+            - paragraph [ref=e42]: Your Share
+            - paragraph [ref=e43]: ₱1,250.00
+      - generic [ref=e44]:
+        - generic [ref=e46]:
+          - img [ref=e48]
+          - paragraph [ref=e50]: All Settled Up
+          - paragraph [ref=e51]: No pending settlements needed.
+        - generic [ref=e52]:
+          - generic [ref=e53]:
+            - generic [ref=e54]:
+              - heading "Weekend Getaway Feed" [level=3] [ref=e169]
+              - paragraph [ref=e56]: LATEST ACTIVITY
+            - generic [ref=e57]: "1"
+          - generic [ref=e251]:
+            - generic [ref=e253]:
+              - generic [ref=e254]:
+                - heading "Dinner at Jollibee" [level=4] [ref=e256]
+                - paragraph [ref=e257]:
+                  - generic [ref=e258]: You
+                  - generic [ref=e259]: paid
+                  - generic [ref=e260]: ₱1,250.00
+              - generic [ref=e262]:
+                - button "Edit Expense" [ref=e263] [cursor=pointer]:
+                  - img [ref=e264]
+                - button "Delete Expense" [ref=e267] [cursor=pointer]:
+                  - img [ref=e268]
+            - generic [ref=e272]: Split with
+  - generic [ref=e81]:
+    - generic [ref=e82]:
+      - button "Wallet" [ref=e83] [cursor=pointer]:
+        - img [ref=e84]
+        - generic [ref=e87]: Wallet
+      - button "Feed" [ref=e88] [cursor=pointer]:
+        - img [ref=e89]
+        - generic [ref=e91]: Feed
+    - button [ref=e93] [cursor=pointer]:
+      - img [ref=e94]
+    - generic [ref=e95]:
+      - button "Invoices" [ref=e96] [cursor=pointer]:
+        - img [ref=e97]
+        - generic [ref=e100]: Invoices
+      - button "Share" [ref=e101] [cursor=pointer]:
+        - img [ref=e102]
+        - generic [ref=e108]: Share

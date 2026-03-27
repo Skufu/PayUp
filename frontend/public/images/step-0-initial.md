@@ -1,0 +1,93 @@
+- generic [ref=e5]:
+  - generic:
+    - img
+  - navigation [ref=e6]:
+    - generic [ref=e7]:
+      - link "PayUp." [ref=e8] [cursor=pointer]:
+        - /url: /
+      - button [ref=e9] [cursor=pointer]:
+        - img [ref=e10]
+  - generic [ref=e13]:
+    - generic [ref=e14]: Now available in beta
+    - heading "SPLIT BILLS, KEEP FRIENDS." [level=1] [ref=e16]:
+      - text: SPLIT BILLS,
+      - generic [ref=e17]: KEEP FRIENDS.
+    - paragraph [ref=e19]: The acid-test for shared expenses. No awkward conversations, just seamless settlement.
+    - generic [ref=e20]:
+      - link "Start for free" [ref=e21] [cursor=pointer]:
+        - /url: /auth/register
+      - link "How it works" [ref=e22] [cursor=pointer]:
+        - /url: /about
+  - generic [ref=e25]:
+    - generic [ref=e26]:
+      - generic: "01"
+      - generic [ref=e27]:
+        - img [ref=e29]
+        - heading "Instant Settlement" [level=3] [ref=e31]
+        - paragraph [ref=e32]: Settle up with a single tap. Real-time transfers.
+    - generic [ref=e33]:
+      - generic: "02"
+      - generic [ref=e34]:
+        - img [ref=e36]
+        - heading "Group Dynamics" [level=3] [ref=e41]
+        - paragraph [ref=e42]: Perfect for roommates, trips, or dinners.
+    - generic [ref=e43]:
+      - generic: "03"
+      - generic [ref=e44]:
+        - img [ref=e46]
+        - heading "Bank-Grade Security" [level=3] [ref=e48]
+        - paragraph [ref=e49]: Your financial data is encrypted and protected.
+  - generic [ref=e51]:
+    - generic [ref=e52]:
+      - heading "HOW IT WORKS" [level=2] [ref=e53]
+      - paragraph [ref=e54]: Three simple steps to never awkwardly ask for money again
+    - generic [ref=e55]:
+      - generic [ref=e56]:
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - generic [ref=e60]: 📱
+            - generic [ref=e61]: Screenshot 01
+          - generic [ref=e62]: "01"
+        - heading "Create a Group" [level=3] [ref=e63]
+        - paragraph [ref=e64]: Start a group for your trip, apartment, or dinner squad. Invite friends via link.
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e69]: 📱
+            - generic [ref=e70]: Screenshot 02
+          - generic [ref=e71]: "02"
+        - heading "Add Expenses" [level=3] [ref=e72]
+        - paragraph [ref=e73]: Snap a receipt or manually add who paid and who owes. We handle the math.
+      - generic [ref=e74]:
+        - generic [ref=e75]:
+          - generic [ref=e76]:
+            - generic [ref=e78]: 📱
+            - generic [ref=e79]: Screenshot 03
+          - generic [ref=e80]: "03"
+        - heading "Settle Up" [level=3] [ref=e81]
+        - paragraph [ref=e82]: See who owes what at a glance. Send a nudge or settle with one tap.
+  - generic [ref=e85]:
+    - generic [ref=e86]:
+      - heading "NO MORE EXCUSES. MAGBABAYAD KAYO." [level=2] [ref=e87]:
+        - text: NO MORE EXCUSES.
+        - text: MAGBABAYAD KAYO.
+      - paragraph [ref=e88]: Finally collect what you're owed. We make sure they don't "forget".
+    - generic [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e91]: 100%
+        - generic [ref=e92]: Free Forever
+      - generic [ref=e93]:
+        - generic [ref=e94]: <1min
+        - generic [ref=e95]: To Get Started
+  - contentinfo [ref=e96]:
+    - generic [ref=e97]:
+      - link "PayUp." [ref=e98] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e99]:
+        - link "Privacy" [ref=e100] [cursor=pointer]:
+          - /url: "#"
+        - link "Terms" [ref=e101] [cursor=pointer]:
+          - /url: "#"
+        - link "Twitter" [ref=e102] [cursor=pointer]:
+          - /url: "#"
+      - generic [ref=e103]: © 2024 PayUp Inc.

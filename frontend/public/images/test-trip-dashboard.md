@@ -1,0 +1,96 @@
+- generic [ref=e2]:
+  - generic [ref=e6]:
+    - generic [ref=e8]:
+      - button [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+      - generic [ref=e12]:
+        - heading "Test Trip 2025" [level=1] [ref=e235]
+        - paragraph [ref=e14]: Trip Dashboard
+      - button "TU" [ref=e17] [cursor=pointer]:
+        - generic [ref=e18]: TU
+    - main [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - heading "Net Position" [level=2] [ref=e27]
+            - generic [ref=e30]: Settled
+            - generic [ref=e31]:
+              - img [ref=e32]
+              - text: All Good
+          - generic [ref=e34]:
+            - generic [ref=e35]: ₱0.00
+            - paragraph [ref=e36]: You are all squared up!
+          - generic [ref=e37]:
+            - generic [ref=e38]:
+              - paragraph [ref=e39]: Group Total
+              - paragraph [ref=e40]: ₱0.00
+            - generic [ref=e41]:
+              - paragraph [ref=e42]: Your Share
+              - paragraph [ref=e43]: ₱0.00
+        - generic [ref=e44]:
+          - generic [ref=e46]:
+            - img [ref=e48]
+            - paragraph [ref=e50]: All Settled Up
+            - paragraph [ref=e51]: No pending settlements needed.
+          - generic [ref=e52]:
+            - generic [ref=e53]:
+              - generic [ref=e54]:
+                - heading "Test Trip 2025 Feed" [level=3] [ref=e236]
+                - paragraph [ref=e56]: LATEST ACTIVITY
+              - generic [ref=e57]: "0"
+            - generic [ref=e237]:
+              - img [ref=e239]
+              - paragraph [ref=e241]: No expenses yet
+              - paragraph [ref=e242]: Tap the + button to add one!
+    - generic [ref=e65]:
+      - generic [ref=e66]:
+        - button "Wallet" [ref=e67] [cursor=pointer]:
+          - img [ref=e68]
+          - generic [ref=e71]: Wallet
+        - button "Feed" [ref=e72] [cursor=pointer]:
+          - img [ref=e73]
+          - generic [ref=e75]: Feed
+      - button [ref=e77] [cursor=pointer]:
+        - img [ref=e78]
+      - generic [ref=e79]:
+        - button "Invoices" [ref=e80] [cursor=pointer]:
+          - img [ref=e81]
+          - generic [ref=e84]: Invoices
+        - button "Share" [ref=e85] [cursor=pointer]:
+          - img [ref=e86]
+          - generic [ref=e92]: Share
+  - generic [ref=e185]:
+    - generic [ref=e186]:
+      - heading "PayUp" [level=2] [ref=e187]
+      - paragraph [ref=e188]: Manage your trips
+      - generic [ref=e189]:
+        - generic [ref=e190]: TU
+        - generic [ref=e191]:
+          - generic [ref=e192]: Test User
+          - generic [ref=e193]: Current profile
+    - generic [ref=e194]:
+      - generic [ref=e195]: Your Groups
+      - button "Weekend Getaway 1 Member" [ref=e196] [cursor=pointer]:
+        - img [ref=e198]
+        - generic [ref=e201]:
+          - generic [ref=e202]: Weekend Getaway
+          - generic [ref=e203]: 1 Member
+        - img [ref=e204]
+      - button "Test Trip 2025 1 Member" [active] [ref=e206] [cursor=pointer]:
+        - img [ref=e208]
+        - generic [ref=e211]:
+          - generic [ref=e212]: Test Trip 2025
+          - generic [ref=e213]: 1 Member
+    - generic [ref=e214]:
+      - button "New Group" [ref=e215] [cursor=pointer]:
+        - img [ref=e217]
+        - text: New Group
+      - button "Join Group" [ref=e218] [cursor=pointer]:
+        - img [ref=e220]
+        - text: Join Group
+      - button "Group Members" [ref=e223] [cursor=pointer]:
+        - img [ref=e225]
+        - text: Group Members
+      - button "My Profile" [ref=e230] [cursor=pointer]:
+        - img [ref=e232]
+        - text: My Profile

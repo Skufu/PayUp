@@ -1,0 +1,106 @@
+- generic [ref=e2]:
+  - generic [ref=e6]:
+    - generic [ref=e8]:
+      - button [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+      - generic [ref=e12]:
+        - heading "Weekend Getaway" [level=1] [ref=e13]
+        - paragraph [ref=e14]: Trip Dashboard
+      - button "TU" [ref=e17] [cursor=pointer]:
+        - generic [ref=e18]: TU
+    - main [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - heading "Net Position" [level=2] [ref=e27]
+            - generic [ref=e30]: Settled
+            - generic [ref=e31]:
+              - img [ref=e32]
+              - text: All Good
+          - generic [ref=e34]:
+            - generic [ref=e35]: ₱0.00
+            - paragraph [ref=e36]: You are all squared up!
+          - generic [ref=e37]:
+            - generic [ref=e38]:
+              - paragraph [ref=e39]: Group Total
+              - paragraph [ref=e40]: ₱1,250.00
+            - generic [ref=e41]:
+              - paragraph [ref=e42]: Your Share
+              - paragraph [ref=e43]: ₱1,250.00
+        - generic [ref=e44]:
+          - generic [ref=e46]:
+            - img [ref=e48]
+            - paragraph [ref=e50]: All Settled Up
+            - paragraph [ref=e51]: No pending settlements needed.
+          - generic [ref=e52]:
+            - generic [ref=e53]:
+              - generic [ref=e54]:
+                - heading "Weekend Getaway Feed" [level=3] [ref=e55]
+                - paragraph [ref=e56]: LATEST ACTIVITY
+              - generic [ref=e57]: "1"
+            - generic [ref=e93]:
+              - generic [ref=e95]:
+                - generic [ref=e96]:
+                  - heading "Dinner at Jollibee" [level=4] [ref=e98]
+                  - paragraph [ref=e99]:
+                    - generic [ref=e100]: You
+                    - generic [ref=e101]: paid
+                    - generic [ref=e102]: ₱1,250.00
+                - generic [ref=e104]:
+                  - button "Edit Expense" [ref=e105] [cursor=pointer]:
+                    - img [ref=e106]
+                  - button "Delete Expense" [ref=e109] [cursor=pointer]:
+                    - img [ref=e110]
+              - generic [ref=e114]: Split with
+    - generic [ref=e65]:
+      - generic [ref=e66]:
+        - button "Wallet" [ref=e67] [cursor=pointer]:
+          - img [ref=e68]
+          - generic [ref=e71]: Wallet
+        - button "Feed" [ref=e72] [cursor=pointer]:
+          - img [ref=e73]
+          - generic [ref=e75]: Feed
+      - button [ref=e77] [cursor=pointer]:
+        - img [ref=e78]
+      - generic [ref=e79]:
+        - button "Invoices" [ref=e80] [cursor=pointer]:
+          - img [ref=e81]
+          - generic [ref=e84]: Invoices
+        - button "Share" [ref=e85] [cursor=pointer]:
+          - img [ref=e86]
+          - generic [ref=e92]: Share
+  - generic [ref=e118]:
+    - generic [ref=e119]:
+      - heading "PayUp" [level=2] [ref=e120]
+      - paragraph [ref=e121]: Manage your trips
+      - generic [ref=e122]:
+        - generic [ref=e123]: TU
+        - generic [ref=e124]:
+          - generic [ref=e125]: Test User
+          - generic [ref=e126]: Current profile
+    - generic [ref=e127]:
+      - generic [ref=e128]: Your Groups
+      - button "Weekend Getaway 1 Member" [ref=e129] [cursor=pointer]:
+        - img [ref=e131]
+        - generic [ref=e134]:
+          - generic [ref=e135]: Weekend Getaway
+          - generic [ref=e136]: 1 Member
+        - img [ref=e137]
+      - button "Test Trip 2025 1 Member" [ref=e139] [cursor=pointer]:
+        - img [ref=e141]
+        - generic [ref=e144]:
+          - generic [ref=e145]: Test Trip 2025
+          - generic [ref=e146]: 1 Member
+    - generic [ref=e147]:
+      - button "New Group" [active] [ref=e148] [cursor=pointer]:
+        - img [ref=e150]
+        - text: New Group
+      - button "Join Group" [ref=e151] [cursor=pointer]:
+        - img [ref=e153]
+        - text: Join Group
+      - button "Group Members" [ref=e156] [cursor=pointer]:
+        - img [ref=e158]
+        - text: Group Members
+      - button "My Profile" [ref=e163] [cursor=pointer]:
+        - img [ref=e165]
+        - text: My Profile
