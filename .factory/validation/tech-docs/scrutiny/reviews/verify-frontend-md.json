@@ -1,0 +1,63 @@
+{
+  "featureId": "verify-frontend-md",
+  "reviewedAt": "2026-04-07T06:15:00.000Z",
+  "commitId": "af087a8",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The worker made many correct updates to FRONTEND.md including fixing component names, modal names, routes, and token storage keys. However, the documentation now contains false information claiming that useGroups.ts and useExpenses.ts hooks exist when they do not.",
+    "issues": [
+      {
+        "file": "docs/FRONTEND.md",
+        "line": 106,
+        "severity": "blocking",
+        "description": "Documentation claims hooks/useGroups.ts and hooks/useExpenses.ts exist, but these files DO NOT EXIST in the codebase. Grep search confirmed no files export useGroups or useExpenses functions. The documentation even shows code examples with '// hooks/useGroups.ts' and '// hooks/useExpenses.ts' (lines ~245-260) claiming these files exist - this is false documentation that will mislead users."
+      },
+      {
+        "file": "docs/FRONTEND.md",
+        "line": 103,
+        "severity": "non_blocking",
+        "description": "Documentation shows 'pwa/register.ts' but actual file is 'pwa/pwaGuide.ts'. The pwa directory only contains pwaGuide.ts, not register.ts."
+      },
+      {
+        "file": "docs/FRONTEND.md",
+        "line": 83,
+        "severity": "non_blocking",
+        "description": "Incomplete modals documentation - only lists 5 modals (AddExpenseModal, PaymentModal, ShareInviteModal, ProfileModal, PushNotificationPrompt) when there are 17 files in modals/ directory. Missing: ConfirmDialog, CreateGroupModal, InstallPrompt, ItemAssignment, JoinGroupModal, MembersModal, ModalWrapper, MyQrModal, ReceiptItemsList, ReceiptScanFlow, ReceiptScanner, SideMenu."
+      },
+      {
+        "file": "docs/FRONTEND.md",
+        "line": 71,
+        "severity": "non_blocking",
+        "description": "Missing files from components documentation: ToastContext.ts and components/hooks/useSwipeableModal.ts subdirectory exist but are not documented."
+      },
+      {
+        "file": "docs/FRONTEND.md",
+        "line": 55,
+        "severity": "non_blocking",
+        "description": "Missing auth/_internal/context.ts file from auth directory documentation."
+      },
+      {
+        "file": "docs/FRONTEND.md",
+        "line": 37,
+        "severity": "non_blocking",
+        "description": "Missing files from directory structure: types.ts, Fonts.tsx, mock/api.ts, mock/data.ts are not documented."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The docs-verifier skill procedure states to 'Read the Target Documentation File completely' and 'Gather Source of Truth Files' but the worker did not fully verify that all documented files actually exist. The skill should emphasize verifying file existence for every path mentioned in documentation, not just fixing incorrect names.",
+      "evidence": "Worker left useGroups.ts and useExpenses.ts in hooks/ documentation without checking if these files actually exist. Transcript shows grep for localStorage/sessionStorage patterns but no verification that hooks files exist."
+    },
+    {
+      "area": "conventions",
+      "observation": "The documentation structure shows a tree format that is incomplete. When documenting directories, all files should be listed, not just a subset.",
+      "evidence": "modals/ directory has 17 files but only 5 are documented. AGENTS.md doesn't mention that directory structure documentation should be exhaustive."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "PASS on primary task items (removed non-existent components, fixed modal names, added missing routes, documented token storage keys correctly). FAIL due to documentation now claiming useGroups.ts and useExpenses.ts exist in hooks/ when these files do not exist anywhere in the codebase. This creates misleading documentation that will confuse users. Additionally, several non-blocking issues: wrong pwa filename (register.ts vs pwaGuide.ts), incomplete modals listing, missing files from structure."
+}
