@@ -111,7 +111,7 @@ Authenticate with Google OAuth.
 **Request:**
 ```json
 {
-  "credential": "google-id-token"
+  "idToken": "google-id-token"
 }
 ```
 
@@ -163,7 +163,7 @@ Reset password with token.
 ```json
 {
   "token": "reset-token",
-  "password": "newpassword"
+  "newPassword": "newpassword"
 }
 ```
 
@@ -196,6 +196,7 @@ Update profile. **Requires auth.**
 
 **Fields:**
 - `name` (optional) – Display name
+- `avatar` (optional) – Avatar image file
 - `payment_qr` (optional) – QR code image file
 
 **Response:**
@@ -356,9 +357,14 @@ Preview invite without auth. **Public endpoint.**
 **Response:**
 ```json
 {
+  "groupId": "uuid",
   "groupName": "Roommates",
   "memberCount": 4,
-  "inviterName": "John Doe"
+  "createdByName": "John Doe",
+  "createdByAvatar": "https://...",
+  "expiresAt": "2026-01-08T00:00:00Z",
+  "isValid": true,
+  "invalidReason": ""
 }
 ```
 
@@ -654,6 +660,30 @@ Unsubscribe from push. **Requires auth.**
 
 ---
 
+## OCR (Receipt Scanning)
+
+### POST /v1/ocr
+
+Extract text from a receipt image using AI. **Requires auth.**
+
+**Request:**
+```json
+{
+  "imageData": "base64-encoded-image-data"
+}
+```
+
+**Response:**
+```json
+{
+  "text": "Store Name\nItem 1......$10.00\nItem 2......$5.00\nTotal.......$15.00"
+}
+```
+
+> **Note:** Requires `GEMINI_API_KEY` to be configured on the server.
+
+---
+
 ## Error Responses
 
 | Status | Meaning |
@@ -684,7 +714,7 @@ Unsubscribe from push. **Requires auth.**
 | Token Refresh | 30 per 15 minutes |
 | Payments | 20 per hour |
 | General API | 60 per minute |
-| Profile Lookup | 30 per minute |
+| Profile Lookup | 100 per hour |
 
 **Headers returned:**
 - `X-RateLimit-Limit` – Max requests
