@@ -1,0 +1,17 @@
+{
+  "milestone": "supplementary-docs",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "previousRound": null,
+  "reason": "No testable assertions - supplementary-docs milestone features (verify-ux-spec-md, verify-guides) have no fulfills mappings. User testing strategy is not applicable for documentation verification as stated in mission.md."
+}
