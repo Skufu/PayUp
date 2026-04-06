@@ -69,8 +69,8 @@ sequenceDiagram
 ```
 
 **Files involved:**
-- Frontend: [`auth/AuthProvider.tsx`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/auth/AuthProvider.tsx)
-- Backend: [`handlers/auth.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/auth.go)
+- Frontend: `frontend/src/payup/auth/AuthProvider.tsx`
+- Backend: `backend/internal/handlers/auth.go`
 
 ### 2. Authenticated API Request
 
@@ -95,8 +95,8 @@ sequenceDiagram
 ```
 
 **Files involved:**
-- Frontend: [`api/client.ts`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/api/client.ts) (proactive refresh)
-- Backend: [`auth/middleware.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/auth/middleware.go)
+- Frontend: `frontend/src/payup/api/client.ts` (proactive refresh)
+- Backend: `backend/internal/auth/middleware.go`
 
 ### 3. Expense Creation with Splits
 
@@ -120,7 +120,7 @@ sequenceDiagram
 
 **Files involved:**
 - Frontend: Add expense modal
-- Backend: [`handlers/expenses.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/expenses.go), [`handlers/validation.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/validation.go)
+- Backend: `backend/internal/handlers/expenses.go`, `backend/internal/handlers/validation.go`
 
 ### 4. Payment Approval Flow
 
@@ -140,11 +140,14 @@ sequenceDiagram
     Backend->>Database: UPDATE payment (approved)
     Backend->>Database: INSERT transfer expense
     Note right of Database: Transfer expense<br/>affects balances
+    Backend->>Backend: Send push to sender (approval notification)
     Backend-->>Receiver: Success
 ```
 
+**Note:** Payment approval sends push notifications to the sender to notify them of approval or rejection.
+
 **Files involved:**
-- Backend: [`handlers/payments.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/payments.go)
+- Backend: `backend/internal/handlers/payments.go`
 
 ### 5. Push Notification Flow
 
@@ -167,8 +170,8 @@ sequenceDiagram
 ```
 
 **Files involved:**
-- Frontend: [`push/pushManager.ts`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/push/pushManager.ts), [`public/sw.js`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/public/sw.js)
-- Backend: [`handlers/push.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/push.go)
+- Frontend: `frontend/src/payup/push/pushManager.ts`, `frontend/public/sw.js`
+- Backend: `backend/internal/handlers/push.go`
 
 ---
 
@@ -176,12 +179,14 @@ sequenceDiagram
 
 | Concern | File |
 |---------|------|
-| API Routes | [`backend/internal/server/server.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/server/server.go) |
-| Authentication | [`backend/internal/auth/*`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/auth), [`handlers/auth.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/auth.go) |
-| Database Schema | [`backend/sql/schema.sql`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/sql/schema.sql) |
+| API Routes | `backend/internal/server/server.go` |
+| Authentication | `backend/internal/auth/*`, `backend/internal/handlers/auth.go` |
+| Database Schema | `backend/sql/schema.sql` |
 | SQL Queries | `backend/sql/queries/*.sql` |
 | Migrations | `backend/migrations/*.sql` |
-| Frontend App | [`frontend/src/payup/PayUpApp.tsx`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/PayUpApp.tsx) |
+| Frontend App | `frontend/src/payup/PayUpApp.tsx` |
+| OCR (Receipt Scanning) | `backend/internal/handlers/ocr.go` |
+| Activity Feed | `backend/internal/handlers/activity.go` |
 
 ---
 
@@ -193,6 +198,7 @@ sequenceDiagram
 | Refresh token expired | User redirected to login |
 | Missing Cloudinary config | Upload endpoints return 503 |
 | Missing VAPID config | Push send no-ops; subscriptions still stored |
+| Missing GEMINI_API_KEY | OCR endpoint returns 503 |
 | Rate limit exceeded | 429 with `Retry-After` header; frontend retries with backoff |
 | Group membership check fail | 403 Forbidden |
 | Payment approval by non-receiver | 403 Forbidden |
@@ -201,8 +207,8 @@ sequenceDiagram
 
 ## See Also
 
-- [Reference Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/REFERENCE.md) – Feature→code mappings
-- [API.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/API.md) – Request/response details
-- [DATABASE.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/DATABASE.md) – Schema documentation
-- [BACKEND.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/BACKEND.md) – Go patterns
-- [FRONTEND.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/FRONTEND.md) – React patterns
+- [Reference Guide](REFERENCE.md) – Feature→code mappings
+- [API.md](API.md) – Request/response details
+- [DATABASE.md](DATABASE.md) – Schema documentation
+- [BACKEND.md](BACKEND.md) – Go patterns
+- [FRONTEND.md](FRONTEND.md) – React patterns
