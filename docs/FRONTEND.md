@@ -63,38 +63,52 @@ frontend/
 │       │   ├── RequireAuth.tsx     # Protected route wrapper
 │       │   └── useAuth.ts          # Auth hook
 │       ├── components/
-│       │   ├── Header.tsx
-│       │   ├── BottomNav.tsx
-│       │   ├── GroupList.tsx
-│       │   ├── ExpenseList.tsx
-│       │   ├── BalanceCard.tsx
+│       │   ├── ActivityFeed.tsx
+│       │   ├── AppShell.tsx
+│       │   ├── NetworkBackground.tsx
+│       │   ├── NoGroupsEmptyState.tsx
+│       │   ├── OfflineIndicator.tsx
+│       │   ├── PWAInstallGuide.tsx
+│       │   ├── PullToRefreshIndicator.tsx
+│       │   ├── NotificationView.tsx
+│       │   ├── Skeleton.tsx
 │       │   ├── Toast.tsx
-│       │   └── modals/        # Modal components
+│       │   ├── WalletView.tsx
+│       │   ├── useToast.ts      # Toast hook
+│       │   └── modals/          # Modal components
 │       │       ├── AddExpenseModal.tsx
 │       │       ├── PaymentModal.tsx
-│       │       ├── InviteModal.tsx
+│       │       ├── ShareInviteModal.tsx
 │       │       ├── ProfileModal.tsx
-│       │       └── PushPromptModal.tsx
+│       │       └── PushNotificationPrompt.tsx
 │       ├── constants/
-│       │   └── categories.ts  # Expense categories
+│       │   └── PaymentProviders.ts  # Payment provider options
 │       ├── hooks/
-│       │   ├── useToast.ts
+│       │   ├── useGroupEvents.ts
+│       │   ├── useOnlineStatus.ts
+│       │   ├── usePullToRefresh.ts
 │       │   ├── useGroups.ts
 │       │   └── useExpenses.ts
 │       ├── pages/
 │       │   ├── LandingPage.tsx
-│       │   ├── LoginPage.tsx
-│       │   ├── RegisterPage.tsx
-│       │   └── JoinGroupPage.tsx
+│       │   ├── JoinGroupPage.tsx
+│       │   ├── OnboardingPage.tsx
+│       │   └── auth/
+│       │       ├── LoginPage.tsx
+│       │       ├── RegisterPage.tsx
+│       │       ├── ForgotPasswordPage.tsx
+│       │       └── ResetPasswordPage.tsx
 │       ├── push/
 │       │   └── pushManager.ts # Push notification logic
 │       ├── pwa/
 │       │   └── register.ts    # SW registration
 │       ├── ui/
-│       │   └── Button.tsx     # Reusable primitives
+│       │   └── users.ts       # User display utilities
 │       └── utils/
-│           ├── receiptParser.ts  # OCR receipt parsing
-│           └── format.ts         # Formatting utilities
+│           ├── sanitize.ts    # Input sanitization
+│           ├── imageCompression.ts  # Image optimization
+│           ├── receiptParser.ts    # OCR receipt parsing
+│           └── receiptOCR.ts       # Receipt OCR logic
 └── index.html
 ```
 
@@ -117,7 +131,10 @@ frontend/
 | `/` | LandingPage | No |
 | `/auth/login` | LoginPage | No |
 | `/auth/register` | RegisterPage | No |
+| `/auth/forgot-password` | ForgotPasswordPage | No |
+| `/auth/reset-password` | ResetPasswordPage | No |
 | `/join/:code` | JoinGroupPage | No (redirects if needed) |
+| `/app/onboarding` | OnboardingPage | Yes |
 | `/app` | PayUpApp | Yes |
 
 ---
@@ -128,7 +145,9 @@ frontend/
 
 [`api/client.ts`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/api/client.ts) handles:
 
-1. **Token Storage**: `localStorage` key `payup_tokens_v1`
+1. **Token Storage**: 
+   - Access token: `sessionStorage` key `payup_access_token`
+   - Refresh token: `localStorage` key `payup_refresh_token`
 2. **Auto-inject**: `Authorization: Bearer <accessToken>` on all requests
 3. **Proactive Refresh**: Checks expiry before each request, refreshes if ≤2min remaining
 4. **Reactive Fallback**: Still handles 401 as safety net
