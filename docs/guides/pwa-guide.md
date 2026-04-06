@@ -6,14 +6,14 @@ Perfect! Let's make PayUp a fully installable PWA (Progressive Web App) with an 
 
 ### 1. Create Web App Manifest
 
-**Create `frontend/public/manifest.json`:**
+**Current implementation in `frontend/public/manifest.json`:**
 
 ```json
 {
   "name": "PayUp - Split Bills & Track Payments",
   "short_name": "PayUp",
   "description": "Easy expense splitting and payment tracking for groups",
-  "start_url": "/",
+  "start_url": "/auth/login",
   "display": "standalone",
   "background_color": "#0a0a0c",
   "theme_color": "#dfff4f",
@@ -21,68 +21,10 @@ Perfect! Let's make PayUp a fully installable PWA (Progressive Web App) with an 
   "scope": "/",
   "icons": [
     {
-      "src": "/icon-72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshot-mobile-1.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Wallet View"
-    },
-    {
-      "src": "/screenshot-mobile-2.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Expense Feed"
     }
   ],
   "categories": ["finance", "productivity", "utilities"],
@@ -91,11 +33,11 @@ Perfect! Let's make PayUp a fully installable PWA (Progressive Web App) with an 
       "name": "Add Expense",
       "short_name": "Add",
       "description": "Quickly add a new expense",
-      "url": "/?action=add-expense",
+      "url": "/app?action=add-expense",
       "icons": [
         {
-          "src": "/icon-192.png",
-          "sizes": "192x192"
+          "src": "/favicon.svg",
+          "sizes": "any"
         }
       ]
     },
@@ -103,11 +45,11 @@ Perfect! Let's make PayUp a fully installable PWA (Progressive Web App) with an 
       "name": "Notifications",
       "short_name": "Notifications",
       "description": "View pending payments",
-      "url": "/?tab=notifications",
+      "url": "/app?tab=notifications",
       "icons": [
         {
-          "src": "/icon-192.png",
-          "sizes": "192x192"
+          "src": "/favicon.svg",
+          "sizes": "any"
         }
       ]
     }
@@ -117,54 +59,38 @@ Perfect! Let's make PayUp a fully installable PWA (Progressive Web App) with an 
 }
 ```
 
+**Note:** The current implementation uses a single SVG icon (`favicon.svg`) with `"sizes": "any"` instead of multiple PNG icons. Screenshots are not currently included in the manifest.
+
 ***
 
 ### 2. Update index.html
 
-**Update `frontend/index.html`:**
+**Current implementation in `frontend/index.html`:**
 
 ```html
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-    
+
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#dfff4f" />
     <meta name="description" content="Easy expense splitting and payment tracking for groups" />
-    
-    <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" href="/icon-180.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/icon-167.png" />
-    
+
     <!-- iOS Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="PayUp" />
-    
+
     <!-- Android/Chrome Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="PayUp" />
-    
-    <!-- Splash Screens for iOS -->
-    <link rel="apple-touch-startup-image" href="/splash-2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)" />
-    <link rel="apple-touch-startup-image" href="/splash-1668x2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)" />
-    <link rel="apple-touch-startup-image" href="/splash-1536x2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2)" />
-    <link rel="apple-touch-startup-image" href="/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" />
-    <link rel="apple-touch-startup-image" href="/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" />
-    <link rel="apple-touch-startup-image" href="/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" />
-    <link rel="apple-touch-startup-image" href="/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
-    <link rel="apple-touch-startup-image" href="/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" />
-    <link rel="apple-touch-startup-image" href="/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)" />
-    <link rel="apple-touch-startup-image" href="/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" />
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <title>PayUp - Split Bills & Track Payments</title>
   </head>
   <body>
@@ -174,126 +100,72 @@ Perfect! Let's make PayUp a fully installable PWA (Progressive Web App) with an 
 </html>
 ```
 
+**Note:** The current implementation does NOT include:
+- Apple Touch Icons (`apple-touch-icon` links)
+- Splash screen configurations (`apple-touch-startup-image`)
+- Favicon (uses inline SVG link instead)
+
+To fully support iOS PWA installation, add the missing Apple Touch Icons and splash screens.
+
 ***
 
-### 3. Enhanced Service Worker
+### 3. Service Worker (Push Notifications Only)
 
-**Update `frontend/public/sw.js`:**
+**Current implementation in `frontend/public/sw.js`:**
+
+> **Note:** The current service worker handles push notifications but does **NOT** include offline caching. The fetch handler is not implemented.
 
 ```javascript
-const CACHE_NAME = 'payup-v1'
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-]
+// PayUp Service Worker - Push Notifications
+// Handles push events when the app is closed or in background
 
-// Install event - cache essential resources
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
-      .then(() => self.skipWaiting())
-  )
-})
-
-// Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName)
-          }
-        })
-      )
-    }).then(() => self.clients.claim())
-  )
-})
-
-// Fetch event - serve from cache, fallback to network
-self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') return
-
-  // Skip API requests (always fetch fresh)
-  if (event.request.url.includes('/v1/')) return
-
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request).then((fetchResponse) => {
-          // Cache successful responses
-          if (fetchResponse && fetchResponse.status === 200) {
-            const responseToCache = fetchResponse.clone()
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache)
-            })
-          }
-          return fetchResponse
-        })
-      })
-      .catch(() => {
-        // Offline fallback - return cached index.html for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html')
-        }
-      })
-  )
-})
-
-// Push notification handling
 self.addEventListener('push', (event) => {
-  if (!event.data) return
+  const data = event.data?.json() ?? {}
 
-  const data = event.data.json()
+  const title = data.title || 'PayUp'
   const options = {
-    body: data.body,
-    icon: data.icon || '/icon-192.png',
-    badge: '/badge-icon.png',
-    vibrate: [200, 100, 200],
-    tag: 'payup-notification',
-    requireInteraction: true,
-    data: data.data || {},
-    actions: [
-      { action: 'open', title: 'Open PayUp', icon: '/icon-192.png' },
-      { action: 'close', title: 'Dismiss' }
-    ]
+    body: data.body || 'You have a new notification',
+    icon: '/android-chrome-192x192.png',
+    badge: '/android-chrome-192x192.png',
+    data: data.data || { url: '/' },
+    vibrate: [100, 50, 100],
+    tag: data.tag || 'payup-notification',
+    renotify: true,
+    requireInteraction: false,
   }
 
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    self.registration.showNotification(title, options)
   )
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
 
-  if (event.action === 'open' || !event.action) {
-    const urlToOpen = event.notification.data.url || '/'
-    
-    event.waitUntil(
-      clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then((clientList) => {
-          // Focus existing window if available
-          for (const client of clientList) {
-            if (client.url.includes(urlToOpen) && 'focus' in client) {
-              return client.focus()
-            }
+  const url = event.notification.data?.url || '/'
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windowClients) => {
+        // Try to focus an existing window
+        for (const client of windowClients) {
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            return client.focus()
           }
-          // Otherwise open new window
-          if (clients.openWindow) {
-            return clients.openWindow(urlToOpen)
-          }
-        })
-    )
-  }
+        }
+        // Otherwise open a new window
+        return clients.openWindow(url)
+      })
+  )
+})
+
+// Handle service worker activation
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim())
 })
 ```
+
+**To add offline caching:** Implement the fetch event handler with caching logic (see above for reference implementation).
 
 ***
 
@@ -561,21 +433,17 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 ### 7. Generate App Icons
 
-You need to create icons in these sizes. Use **Canva** or **Figma** to create a simple PayUp logo:
+**Current state:** The app uses a single SVG icon (`frontend/public/favicon.svg`) with `"sizes": "any"` in the manifest, which scales to all sizes.
 
-**Required Sizes:**
-- `favicon.png` (32x32)
-- `icon-72.png`
-- `icon-96.png`
-- `icon-128.png`
-- `icon-144.png`
-- `icon-152.png`
-- `icon-167.png` (iOS)
-- `icon-180.png` (iOS)
-- `icon-192.png`
-- `icon-384.png`
-- `icon-512.png`
-- `badge-icon.png` (96x96 monochrome for notifications)
+**Optional: Add multiple icon sizes for better compatibility:**
+
+You can create icons in these additional sizes using **Canva** or **Figma** to create a simple PayUp logo:
+
+**Recommended Additional Sizes:**
+- `icon-192.png` (Android)
+- `icon-512.png` (Android)
+- `icon-180.png` (iOS home screen)
+- `icon-167.png` (iOS home screen)
 
 **Quick Icon Design:**
 ```
@@ -714,15 +582,16 @@ body {
 
 ## ✅ PWA Feature Checklist
 
-- [x] **Web App Manifest** - App metadata & icons
-- [x] **Service Worker** - Offline support & caching
+- [x] **Web App Manifest** - App metadata & icons (using favicon.svg with "sizes": "any")
+- [x] **Service Worker** - Push notification handling (no offline caching)
 - [x] **Install Prompt** - Custom install UI
-- [x] **iOS Support** - Apple touch icons & meta tags
+- [x] **iOS Support** - Basic meta tags (no Apple Touch Icons or splash screens)
 - [x] **Push Notifications** - System notifications
 - [x] **Offline Indicator** - Show when offline
-- [x] **Safe Area Support** - iPhone notch support
-- [x] **Splash Screens** - Branded loading screens
-- [x] **App Shortcuts** - Quick actions (Android)
+- [x] **Safe Area Support** - CSS variables for iPhone notch support
+- [ ] **Offline Caching** - Full offline support not implemented
+- [ ] **Splash Screens** - iOS splash screens not configured
+- [ ] **App Shortcuts** - Shortcuts defined in manifest but may not work on iOS
 
 ***
 

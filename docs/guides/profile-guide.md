@@ -41,8 +41,9 @@ Implemented in `backend/internal/server/server.go`:
   - `multipart/form-data`
   - fields:
     - `name` (optional)
-    - `payment_qr` (optional file)
-  - updates `users.name` and/or `users.qr_url`
+    - `payment_qr` (optional file) - GCash/Maya QR image
+    - `avatar` (optional file) - user avatar image
+  - updates `users.name`, `users.qr_url`, and/or `users.avatar_url`
 
 - **GET** `/v1/users/:id/profile` (auth)
   - returns `{ id, name, avatarUrl, qrUrl }`
