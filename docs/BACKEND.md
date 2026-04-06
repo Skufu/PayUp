@@ -93,6 +93,7 @@ backend/
 │   │   ├── cors.go           # CORS configuration
 │   │   ├── errors.go         # Error handling
 │   │   ├── https.go          # HTTPS enforcement
+│   │   ├── logger.go         # Structured logging
 │   │   ├── ratelimit.go      # Rate limiting
 │   │   ├── security.go       # Security headers
 │   │   └── request_id.go     # Request tracing

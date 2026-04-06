@@ -49,7 +49,7 @@ docker compose -f backend/docker-compose.yml up -d
 
 # 4. Run migrations
 cd backend
-go run cmd/migrate/main.go up
+go run ./cmd/migrate/main.go up
 cd ..
 
 # 5. Install frontend dependencies
@@ -123,7 +123,7 @@ Apply the database schema:
 
 ```bash
 cd backend
-go run cmd/migrate/main.go up
+go run ./cmd/migrate/main.go up
 cd ..
 ```
 
@@ -131,7 +131,7 @@ Check migration status:
 
 ```bash
 cd backend
-go run cmd/migrate/main.go status
+go run ./cmd/migrate/main.go status
 cd ..
 ```
 
@@ -234,9 +234,9 @@ go test ./internal/balance/...
 sqlc generate
 
 # Migration commands
-go run cmd/migrate/main.go up      # Apply migrations
-go run cmd/migrate/main.go down    # Rollback one migration
-go run cmd/migrate/main.go status  # Check status
+go run ./cmd/migrate/main.go up      # Apply migrations
+go run ./cmd/migrate/main.go down    # Rollback one migration
+go run ./cmd/migrate/main.go status  # Check status
 ```
 
 ### Frontend
@@ -272,7 +272,7 @@ docker compose -f backend/docker-compose.yml logs -f
 # Reset database (delete all data)
 docker compose -f backend/docker-compose.yml down -v
 docker compose -f backend/docker-compose.yml up -d
-cd backend && go run cmd/migrate/main.go up
+cd backend && go run ./cmd/migrate/main.go up
 ```
 
 ---
@@ -332,12 +332,12 @@ PORT=8081
 **Solutions:**
 ```bash
 # Check migration status
-cd backend && go run cmd/migrate/main.go status
+cd backend && go run ./cmd/migrate/main.go status
 
 # Reset database if needed (loses all data)
 docker compose -f backend/docker-compose.yml down -v
 docker compose -f backend/docker-compose.yml up -d
-go run cmd/migrate/main.go up
+go run ./cmd/migrate/main.go up
 ```
 
 ### Go Module Errors

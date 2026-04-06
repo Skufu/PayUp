@@ -86,9 +86,7 @@ frontend/
 │       ├── hooks/
 │       │   ├── useGroupEvents.ts
 │       │   ├── useOnlineStatus.ts
-│       │   ├── usePullToRefresh.ts
-│       │   ├── useGroups.ts
-│       │   └── useExpenses.ts
+│       │   └── usePullToRefresh.ts
 │       ├── pages/
 │       │   ├── LandingPage.tsx
 │       │   ├── JoinGroupPage.tsx
@@ -101,7 +99,7 @@ frontend/
 │       ├── push/
 │       │   └── pushManager.ts # Push notification logic
 │       ├── pwa/
-│       │   └── register.ts    # SW registration
+│       │   └── pwaGuide.ts    # SW registration
 │       ├── ui/
 │       │   └── users.ts       # User display utilities
 │       └── utils/
@@ -207,26 +205,18 @@ interface AuthContext {
 
 ### TanStack Query Patterns
 
-All data fetching uses React Query with custom hooks:
+All data fetching uses React Query with custom hooks in `api/`:
 
 ```typescript
-// hooks/useGroups.ts
-export function useGroups() {
-    return useQuery({
-        queryKey: ['groups'],
-        queryFn: endpoints.listGroups,
-        staleTime: 30 * 1000, // 30 seconds
-    });
-}
-
-// hooks/useExpenses.ts
-export function useExpenses(groupId: string) {
-    return useQuery({
-        queryKey: ['expenses', groupId],
-        queryFn: () => endpoints.listExpenses(groupId),
-    });
-}
+// api/endpoints.ts - API functions
+export const endpoints = {
+    listGroups: () => client.get<Group[]>('/v1/groups'),
+    listExpenses: (groupId: string) => client.get<Expense[]>(`/v1/groups/${groupId}/expenses`),
+    // ... other endpoints
+};
 ```
+
+Query hooks are auto-generated from endpoints and accessed via React Query's `useQuery` directly in components.
 
 ### Query Key Conventions
 
