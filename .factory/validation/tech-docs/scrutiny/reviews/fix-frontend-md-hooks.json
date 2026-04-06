@@ -1,0 +1,15 @@
+{
+  "featureId": "fix-frontend-md-hooks",
+  "reviewedAt": "2026-04-07T06:30:00.000Z",
+  "commitId": "9a765df",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix adequately addresses all blocking and non-blocking issues from the prior review. The worker correctly removed references to non-existent hooks (useGroups.ts, useExpenses.ts), fixed the pwa filename (register.ts to pwaGuide.ts), updated the TanStack Query Patterns section to remove false code examples, and added logger.go to BACKEND.md middleware.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/tech-docs/scrutiny/reviews/verify-frontend-md.json",
+  "summary": "PASS. The fix completely addresses the original blocking failure. The prior review flagged false documentation claiming hooks/useGroups.ts and hooks/useExpenses.ts exist (with code examples showing these files). The fix: (1) removed both hooks from the directory structure in FRONTEND.md lines 86-93, (2) changed pwa/register.ts to pwa/pwaGuide.ts matching actual file, (3) updated the TanStack Query Patterns section (lines 206-219) to remove false code examples and correctly state hooks are in api/ directory, and (4) added logger.go to BACKEND.md middleware section matching actual middleware files. Verification confirmed: grep for useGroups|useExpenses returns no matches, pwaGuide.ts found, logger.go found, actual hooks (useGroupEvents.ts, useOnlineStatus.ts, usePullToRefresh.ts) are correctly documented."
+}
