@@ -14,7 +14,7 @@
 
 | Component | Technology |
 |-----------|------------|
-| Language | Go 1.24 |
+| Language | Go 1.24.1 |
 | HTTP Framework | Gin |
 | Database Driver | pgx/v5 |
 | Query Generation | sqlc |
@@ -82,6 +82,7 @@ backend/
 │   │   ├── balances.go       # Balance queries
 │   │   ├── payments.go       # Payment flow
 │   │   ├── nudges.go         # Reminder notifications
+│   │   ├── ocr.go            # OCR receipt processing
 │   │   ├── push.go           # Push subscriptions
 │   │   ├── invites.go        # Invite preview
 │   │   ├── events.go         # SSE streaming
@@ -90,6 +91,8 @@ backend/
 │   ├── logger/               # Structured logging
 │   ├── middleware/           # HTTP middleware
 │   │   ├── cors.go           # CORS configuration
+│   │   ├── errors.go         # Error handling
+│   │   ├── https.go          # HTTPS enforcement
 │   │   ├── ratelimit.go      # Rate limiting
 │   │   ├── security.go       # Security headers
 │   │   └── request_id.go     # Request tracing
@@ -173,7 +176,7 @@ Different endpoints have different risk profiles:
 | Token Refresh | 30/15min | Already authenticated, multi-tab support |
 | Payments | 20/hour | Financial operations |
 | General API | 60/min | Normal operations |
-| Profile Lookup | 30/min | Prevent enumeration |
+| Profile Lookup | 100/hour | Prevent enumeration |
 
 Implementation in [`middleware/ratelimit.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/middleware/ratelimit.go).
 
