@@ -46,12 +46,12 @@ Start here when exploring the codebase:
 
 | Purpose | File |
 |---------|------|
-| Backend API routes | [`backend/internal/server/server.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/server/server.go) |
-| Backend main | [`backend/cmd/api/main.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/cmd/api/main.go) |
-| Frontend app root | [`frontend/src/payup/PayUpApp.tsx`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/PayUpApp.tsx) |
-| Frontend API client | [`frontend/src/payup/api/client.ts`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/api/client.ts) |
-| Frontend endpoints | [`frontend/src/payup/api/endpoints.ts`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/api/endpoints.ts) |
-| Database schema | [`backend/sql/schema.sql`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/sql/schema.sql) |
+| Backend API routes | [`backend/internal/server/server.go`](backend/internal/server/server.go) |
+| Backend main | [`backend/cmd/api/main.go`](backend/cmd/api/main.go) |
+| Frontend app root | [`frontend/src/payup/PayUpApp.tsx`](frontend/src/payup/PayUpApp.tsx) |
+| Frontend API client | [`frontend/src/payup/api/client.ts`](frontend/src/payup/api/client.ts) |
+| Frontend endpoints | [`frontend/src/payup/api/endpoints.ts`](frontend/src/payup/api/endpoints.ts) |
+| Database schema | [`backend/sql/schema.sql`](backend/sql/schema.sql) |
 | Migrations | `backend/migrations/*.sql` |
 | SQL queries | `backend/sql/queries/*.sql` |
 
@@ -62,58 +62,58 @@ Start here when exploring the codebase:
 ### Authentication & Users
 | Feature | Backend | Frontend |
 |---------|---------|----------|
-| JWT tokens (access/refresh) | [`internal/auth/tokens.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/auth/tokens.go) | [`api/client.ts`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/api/client.ts) |
-| Auth middleware | [`internal/auth/middleware.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/auth/middleware.go) | - |
-| Login/register/refresh | [`internal/handlers/auth.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/auth.go) | [`auth/AuthProvider.tsx`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/auth/AuthProvider.tsx) |
-| Google OAuth | [`internal/handlers/auth.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/auth.go) | Uses `@react-oauth/google` |
-| Password reset | [`internal/handlers/auth.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/auth.go) | - |
-| Payment QR management | [`internal/handlers/auth.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/auth.go) | Profile modal |
+| JWT tokens (access/refresh) | [`internal/auth/tokens.go`](backend/internal/auth/tokens.go) | [`api/client.ts`](frontend/src/payup/api/client.ts) |
+| Auth middleware | [`internal/auth/middleware.go`](backend/internal/auth/middleware.go) | - |
+| Login/register/refresh | [`internal/handlers/auth.go`](backend/internal/handlers/auth.go) | [`auth/AuthProvider.tsx`](frontend/src/payup/auth/AuthProvider.tsx) |
+| Google OAuth | [`internal/handlers/auth.go`](backend/internal/handlers/auth.go) | Uses `@react-oauth/google` |
+| Password reset | [`internal/handlers/auth.go`](backend/internal/handlers/auth.go) | - |
+| Payment QR management | [`internal/handlers/auth.go`](backend/internal/handlers/auth.go) | Profile modal |
 
 ### Groups & Invites
 | Feature | Backend | Frontend |
 |---------|---------|----------|
-| Group CRUD | [`internal/handlers/groups.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/groups.go) | [`PayUpApp.tsx`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/PayUpApp.tsx) |
-| Invite codes | [`internal/handlers/groups.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/groups.go) | Invite modal |
-| Invite preview (public) | [`internal/handlers/invites.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/invites.go) | Join page |
-| Leave/remove members | [`internal/handlers/groups.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/groups.go) | Member management |
+| Group CRUD | [`internal/handlers/groups.go`](backend/internal/handlers/groups.go) | [`PayUpApp.tsx`](frontend/src/payup/PayUpApp.tsx) |
+| Invite codes | [`internal/handlers/groups.go`](backend/internal/handlers/groups.go) | Invite modal |
+| Invite preview (public) | [`internal/handlers/invites.go`](backend/internal/handlers/invites.go) | Join page |
+| Leave/remove members | [`internal/handlers/groups.go`](backend/internal/handlers/groups.go) | Member management |
 
 ### Expenses & Splits
 | Feature | Backend | Frontend |
 |---------|---------|----------|
-| Create/list/update/delete | [`internal/handlers/expenses.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/expenses.go) | Add expense modal |
-| Split validation | [`internal/handlers/validation.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/validation.go) | Form validation |
-| Receipt OCR parsing | - | [`utils/receiptParser.ts`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/utils/receiptParser.ts) |
+| Create/list/update/delete | [`internal/handlers/expenses.go`](backend/internal/handlers/expenses.go) | Add expense modal |
+| Split validation | [`internal/handlers/validation.go`](backend/internal/handlers/validation.go) | Form validation |
+| Receipt OCR parsing | - | [`utils/receiptParser.ts`](frontend/src/payup/utils/receiptParser.ts) |
 
 ### Balances & Payments
 | Feature | Backend | Frontend |
 |---------|---------|----------|
-| Balance calculation | [`internal/handlers/balances.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/balances.go), [`internal/balance/*`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/balance) | - |
-| Payment create/approve/reject | [`internal/handlers/payments.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/payments.go) | Payment modal |
-| Payment proof upload | [`internal/handlers/payments.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/payments.go) | Camera/upload UI |
+| Balance calculation | [`internal/handlers/balances.go`](backend/internal/handlers/balances.go), [`internal/balance/*`](backend/internal/balance) | - |
+| Payment create/approve/reject | [`internal/handlers/payments.go`](backend/internal/handlers/payments.go) | Payment modal |
+| Payment proof upload | [`internal/handlers/payments.go`](backend/internal/handlers/payments.go) | Camera/upload UI |
 
 ### Notifications
 | Feature | Backend | Frontend |
 |---------|---------|----------|
-| Nudges (reminders) | [`internal/handlers/nudges.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/nudges.go) | Nudge button |
-| Push subscriptions | [`internal/handlers/push.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/push.go) | [`push/pushManager.ts`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/push/pushManager.ts) |
-| Service worker | - | [`public/sw.js`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/public/sw.js) |
+| Nudges (reminders) | [`internal/handlers/nudges.go`](backend/internal/handlers/nudges.go) | Nudge button |
+| Push subscriptions | [`internal/handlers/push.go`](backend/internal/handlers/push.go) | [`push/pushManager.ts`](frontend/src/payup/push/pushManager.ts) |
+| Service worker | - | [`public/sw.js`](frontend/public/sw.js) |
 
 ### Real-time & Activity
 | Feature | Backend | Frontend |
 |---------|---------|----------|
-| SSE events stream | [`internal/handlers/events.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/events.go), [`internal/events/*`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/events) | EventSource |
-| Activity log | [`internal/handlers/activity.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/activity.go) | Activity feed |
+| SSE events stream | [`internal/handlers/events.go`](backend/internal/handlers/events.go), [`internal/events/*`](backend/internal/events) | EventSource |
+| Activity log | [`internal/handlers/activity.go`](backend/internal/handlers/activity.go) | Activity feed |
 
 ### Uploads
 | Feature | Backend | Frontend |
 |---------|---------|----------|
-| Cloudinary integration | [`internal/services/upload.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/services/upload.go) | - |
+| Cloudinary integration | [`internal/services/upload.go`](backend/internal/services/upload.go) | - |
 
 ---
 
 ## API Route Reference
 
-All routes defined in [`backend/internal/server/server.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/server/server.go).
+All routes defined in [`backend/internal/server/server.go`](backend/internal/server/server.go).
 
 ### Health
 | Method | Path | Auth | Purpose |
@@ -197,11 +197,16 @@ All routes defined in [`backend/internal/server/server.go`](file:///c:/Users/ADR
 | POST | `/v1/push/subscribe` | Yes | Subscribe to push notifications |
 | DELETE | `/v1/push/unsubscribe` | Yes | Unsubscribe from push |
 
+### OCR
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| POST | `/v1/ocr` | Yes | Parse receipt image with OCR (Gemini) |
+
 ---
 
 ## Database Tables
 
-Defined in [`backend/sql/schema.sql`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/sql/schema.sql).
+Defined in [`backend/sql/schema.sql`](backend/sql/schema.sql).
 
 | Table | Purpose |
 |-------|---------|
@@ -225,27 +230,27 @@ Defined in [`backend/sql/schema.sql`](file:///c:/Users/ADRIAN/Github/skufu/PayUp
 ### How do I...
 
 **Find where HTTP routes are registered?**
-→ [`backend/internal/server/server.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/server/server.go)
+→ [`backend/internal/server/server.go`](backend/internal/server/server.go)
 
 **Understand how refresh tokens work?**
-→ [`backend/internal/auth/tokens.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/auth/tokens.go) for token generation
-→ [`backend/internal/handlers/auth.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/auth.go) `Refresh` handler
-→ [`frontend/src/payup/api/client.ts`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/api/client.ts) for proactive refresh
+→ [`backend/internal/auth/tokens.go`](backend/internal/auth/tokens.go) for token generation
+→ [`backend/internal/handlers/auth.go`](backend/internal/handlers/auth.go) `Refresh` handler
+→ [`frontend/src/payup/api/client.ts`](frontend/src/payup/api/client.ts) for proactive refresh
 
 **See how balances are computed from expenses?**
-→ [`backend/internal/balance/calc.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/balance/calc.go) for the algorithm
-→ [`backend/internal/handlers/balances.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/balances.go) for the API handler
+→ [`backend/internal/balance/calc.go`](backend/internal/balance/calc.go) for the algorithm
+→ [`backend/internal/handlers/balances.go`](backend/internal/handlers/balances.go) for the API handler
 
 **Understand what happens when a payment is approved?**
-→ [`backend/internal/handlers/payments.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/payments.go) `Approve` method creates a transfer expense
+→ [`backend/internal/handlers/payments.go`](backend/internal/handlers/payments.go) `Approve` method creates a transfer expense
 
 **Find where push subscriptions are stored?**
-→ `push_subscriptions` table in [`backend/sql/schema.sql`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/sql/schema.sql)
-→ [`backend/internal/handlers/push.go`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/backend/internal/handlers/push.go) for subscribe/unsubscribe
+→ `push_subscriptions` table in [`backend/sql/schema.sql`](backend/sql/schema.sql)
+→ [`backend/internal/handlers/push.go`](backend/internal/handlers/push.go) for subscribe/unsubscribe
 
 **Locate the service worker?**
-→ [`frontend/public/sw.js`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/public/sw.js) for the worker
-→ [`frontend/src/main.tsx`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/main.tsx) for registration
+→ [`frontend/public/sw.js`](frontend/public/sw.js) for the worker
+→ [`frontend/src/main.tsx`](frontend/src/main.tsx) for registration
 
 **Add a new API endpoint?**
 1. Add SQL query in `backend/sql/queries/*.sql`
@@ -264,7 +269,7 @@ Defined in [`backend/sql/schema.sql`](file:///c:/Users/ADRIAN/Github/skufu/PayUp
 
 ## Environment Variables
 
-Full reference in [`env.example`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/env.example).
+Full reference in [`env.example`](../env.example).
 
 ### Backend (Required)
 | Variable | Purpose |
