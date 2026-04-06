@@ -254,12 +254,12 @@ Group activity history.
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | uuid | Primary key |
-| `group_id` | uuid | FK → groups.id |
-| `user_id` | uuid | FK → users.id |
-| `activity_type` | text | "expense_created", "payment_approved", etc. |
-| `description` | text | Human-readable description |
+| `group_id` | uuid NOT NULL | FK → groups.id |
+| `user_id` | uuid NOT NULL | FK → users.id |
+| `activity_type` | text NOT NULL | "expense_created", "payment_approved", etc. |
+| `description` | text NOT NULL | Human-readable description |
 | `metadata` | jsonb | Additional data |
-| `created_at` | timestamptz | Activity time |
+| `created_at` | timestamptz NOT NULL | Activity time |
 
 **Indexes:** `group_id`, `created_at DESC`
 
