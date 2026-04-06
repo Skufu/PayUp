@@ -61,7 +61,7 @@
 
 ```bash
 cd backend
-DATABASE_URL="your-connection-string" go run cmd/migrate/main.go up
+DATABASE_URL="your-connection-string" go run ./cmd/migrate/main.go up
 ```
 
 ---
@@ -243,6 +243,7 @@ curl -I https://your-api.onrender.com/health
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `PORT` | No | 8080 | HTTP port |
+| `LOG_LEVEL` | No | INFO | Logging level (DEBUG, INFO, WARN, ERROR) |
 | `DATABASE_URL` | Yes | - | PostgreSQL connection |
 | `JWT_SECRET` | Yes | - | Token signing secret |
 | `ACCESS_TOKEN_TTL_MINUTES` | No | 15 | Access token lifetime |
@@ -253,6 +254,8 @@ curl -I https://your-api.onrender.com/health
 | `GOOGLE_CLIENT_ID` | Optional | - | Google OAuth |
 | `CLOUDINARY_*` | Optional | - | Image uploads |
 | `VAPID_*` | Optional | - | Push notifications |
+
+> **Note:** `CORS_ORIGINS` is documented above but requires code changes to `backend/internal/config/config.go` to take effect. The variable is currently not read by the application.
 
 ### Frontend
 
@@ -266,6 +269,6 @@ curl -I https://your-api.onrender.com/health
 
 ## See Also
 
-- [Reference Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/REFERENCE.md) – Environment variables list
-- [Docker Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/technical/docker.md) – Container setup
-- [BACKEND.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/BACKEND.md) – Server configuration
+- [Reference Guide](REFERENCE.md) – Environment variables list
+- [Docker Guide](technical/docker.md) – Container setup
+- [BACKEND.md](BACKEND.md) – Server configuration
