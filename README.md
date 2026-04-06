@@ -41,15 +41,15 @@ PayUp is a full-stack expense-splitting application for groups. Key features:
 
 | Document | Purpose |
 |----------|---------|
-| [Reference Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/REFERENCE.md) | Quick navigation, feature→code map, API routes |
-| [CLAUDE.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/CLAUDE.md) | Comprehensive development guide |
-| [Architecture](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/ARCHITECTURE.md) | System design and data flow |
-| [API Reference](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/API.md) | Request/response formats |
-| [Database](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/DATABASE.md) | Schema and relationships |
-| [Frontend](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/FRONTEND.md) | React patterns and structure |
-| [Backend](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/BACKEND.md) | Go/Gin patterns |
-| [Deployment](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/DEPLOYMENT.md) | Vercel/Render setup |
-| [UX Spec](file:///c:/Users/ADRIAN/Github/skufu/PayUp/UX_SPEC.md) | UI/UX patterns and decisions |
+| [Reference Guide](docs/REFERENCE.md) | Quick navigation, feature→code map, API routes |
+| [CLAUDE.md](CLAUDE.md) | Comprehensive development guide |
+| [Architecture](docs/ARCHITECTURE.md) | System design and data flow |
+| [API Reference](docs/API.md) | Request/response formats |
+| [Database](docs/DATABASE.md) | Schema and relationships |
+| [Frontend](docs/FRONTEND.md) | React patterns and structure |
+| [Backend](docs/BACKEND.md) | Go/Gin patterns |
+| [Deployment](docs/DEPLOYMENT.md) | Vercel/Render setup |
+| [UX Spec](UX_SPEC.md) | UI/UX patterns and decisions |
 
 ---
 
@@ -185,6 +185,6 @@ curl http://localhost:8080/health
 
 ## See Also
 
-- [Reference Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/REFERENCE.md) – Quick navigation and search
-- [CLAUDE.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/CLAUDE.md) – Comprehensive development guide
-- [PWA Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/guides/pwa-guide.md) – Progressive Web App setup
+- [Reference Guide](docs/REFERENCE.md) – Quick navigation and search
+- [CLAUDE.md](CLAUDE.md) – Comprehensive development guide
+- [PWA Guide](docs/guides/pwa-guide.md) – Progressive Web App setup
