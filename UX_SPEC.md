@@ -2,7 +2,7 @@
 
 > UX decisions and UI patterns for the PayUp expense-splitting application.
 
-Living document – Last updated: 2026-01-02
+Living document – Last updated: 2026-04-07
 
 ---
 
@@ -31,7 +31,7 @@ Living document – Last updated: 2026-01-02
 
 ## Toast Notification System
 
-**Component:** [`components/Toast.tsx`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/components/Toast.tsx)
+**Component:** [`components/Toast.tsx`](file:///Users/adriangabriellfrancisco/workspace/github.com/Skufu/PayUp/frontend/src/payup/components/Toast.tsx)
 
 ### Queue Behavior
 - **Maximum visible**: 3 toasts at once
@@ -59,7 +59,7 @@ Living document – Last updated: 2026-01-02
 
 ## Expense Form
 
-**Component:** [`components/modals/AddExpenseModal.tsx`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/components/modals/AddExpenseModal.tsx)
+**Component:** [`components/modals/AddExpenseModal.tsx`](file:///Users/adriangabriellfrancisco/workspace/github.com/Skufu/PayUp/frontend/src/payup/components/modals/AddExpenseModal.tsx)
 
 ### Title Field
 - **Soft limit**: 50 characters
@@ -96,7 +96,7 @@ Living document – Last updated: 2026-01-02
 | Health | 🏥 | 🏥 |
 | Other | 📦 | 📦 |
 
-**Defined in:** [`constants/categories.ts`](file:///c:/Users/ADRIAN/Github/skufu/PayUp/frontend/src/payup/constants/categories.ts)
+**Implementation:** Categories are hardcoded in [`components/modals/AddExpenseModal.tsx`](file:///Users/adriangabriellfrancisco/workspace/github.com/Skufu/PayUp/frontend/src/payup/components/modals/AddExpenseModal.tsx) as the `CATEGORIES` constant array.
 
 ### Icons
 - **Primary**: Lucide icons (consistent, cross-platform)
@@ -263,22 +263,63 @@ color: #dfff4f;
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Toast queue (max 3) | ✅ Done | |
-| Toast push animation | ✅ Done | |
-| Safe-area positioning | ✅ Done | |
-| aria-live on toasts | ✅ Done | |
-| Character counter | ✅ Done | Title field |
-| Responsive categories | ✅ Done | Grid on md+ |
-| Haptic feedback | ✅ Done | Navigator.vibrate |
-| Swipe-down modal | ✅ Done | Gesture dismiss |
-| Receipt OCR | ✅ Done | Gemini API |
+| Toast push animation | ✅ Done | Framer Motion enter/exit |
+| Toast duration (3s) | ✅ Done | Fixed 3000ms |
+| Toast types (success/error/warning/info) | ✅ Done | Success uses lime (#dfff4f) |
+| Toast positioning | ✅ Done | Centered, fixed bottom-20, z-[100] |
+| Responsive categories | ✅ Done | Horizontal scroll on mobile |
+| Category selection | ✅ Done | Hardcoded in AddExpenseModal |
+| Swipe-down modal | ✅ Done | useSwipeableModal hook |
+| Receipt OCR | ✅ Done | Gemini API via ReceiptScanFlow |
 | User exclusion in splits | ✅ Done | Hybrid mode |
+| Equal split mode | ✅ Done | |
+| Hybrid split mode | ✅ Done | Itemized + remainder distribution |
+| Toast queue (max 3) | ❌ Not Done | Uses AnimatePresence popLayout |
+| Safe-area positioning | ❌ Not Done | No env(safe-area-inset-bottom) |
+| aria-live on toasts | ❌ Not Done | Accessibility attribute missing |
+| Character counter | ❌ Not Done | No 50-char limit warning |
+| Focus trap in modals | ❌ Not Done | No focus trapping implemented |
+| Exact split mode | ❌ Not Done | Not available in UI |
+| Percentage split mode | ❌ Not Done | Not available in UI |
+
+---
+
+## Known Discrepancies
+
+This section documents differences between this specification and actual implementation.
+
+### Critical (Missing Features)
+
+1. **Toast Queue Limit (max 3):** The specification states a maximum of 3 visible toasts with overflow pushing the oldest out. The actual implementation uses `AnimatePresence mode="popLayout"` which replaces toasts rather than maintaining a queue. To fully implement: Add logic to limit toasts array to 3 items and animate older toasts out.
+
+2. **Focus Trap in Modals:** The specification requires focus to be trapped within open modals. The current implementation does not include focus trapping. Requires implementing focus management when modal opens.
+
+### Medium (Accessibility)
+
+3. **Safe-Area Positioning:** Toast spec mentions `env(safe-area-inset-bottom)` for device notches, but this is not implemented in the Toast component.
+
+4. **aria-live on Toasts:** Toasts should have `aria-live="polite"` for screen reader announcements. Currently not present in the component.
+
+### Low (UX Improvements)
+
+5. **Character Counter:** Title field should show "45/50" counter turning red when exceeded. Not currently implemented.
+
+### Split Modes
+
+6. **Exact Split Mode:** Spec documents "Exact Split" where user enters specific amounts - not implemented. Only Equal and Hybrid modes available.
+
+7. **Percentage Split Mode:** Spec documents "Percentage Split" where user enters percentages - not implemented.
 
 ---
 
 ## Changelog
 
-### 2026-01-02
+### 2026-04-07 - Verification Update
+- Verified UX patterns against actual component implementations
+- Updated categories reference from non-existent `constants/categories.ts` to actual hardcoded location in AddExpenseModal
+- Added "Known Discrepancies" section documenting unimplemented features
+- Updated Implementation Status to reflect actual implementation state
+- Fixed: Toast queue (max 3) not implemented, Character counter not implemented, Focus trap not implemented, Exact/Percentage split modes not implemented, safe-area and aria-live accessibility features missing
 - Updated implementation status
 - Added split modes documentation
 - Added swipe-down gesture details
@@ -292,5 +333,5 @@ color: #dfff4f;
 
 ## See Also
 
-- [FRONTEND.md](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/FRONTEND.md) – React component structure
-- [Reference Guide](file:///c:/Users/ADRIAN/Github/skufu/PayUp/docs/REFERENCE.md) – Feature→code mappings
+- [FRONTEND.md](file:///Users/adriangabriellfrancisco/workspace/github.com/Skufu/PayUp/docs/FRONTEND.md) – React component structure
+- [Reference Guide](file:///Users/adriangabriellfrancisco/workspace/github.com/Skufu/PayUp/docs/REFERENCE.md) – Feature→code mappings
