@@ -34,9 +34,9 @@ go test ./internal/balance/...      # Run specific package tests
 **Database:**
 ```bash
 cd backend
-goose postgres "$DATABASE_URL" up                    # Run migrations
-goose postgres "$DATABASE_URL" down                  # Rollback one migration
-goose postgres "$DATABASE_URL" status                # Check migration status
+go run ./cmd/migrate/main.go up                      # Run migrations
+go run ./cmd/migrate/main.go down                    # Rollback one migration
+go run ./cmd/migrate/main.go status                  # Check migration status
 sqlc generate                                        # Regenerate type-safe DB code
 ```
 
@@ -155,7 +155,7 @@ docker compose -f backend/docker-compose.yml up -d
    - Create migration: `backend/migrations/00X_feature_name.sql`
    - Update schema: `backend/sql/schema.sql`
    - Add queries: `backend/sql/queries/feature.sql`
-   - Run: `goose postgres "$DATABASE_URL" up && sqlc generate`
+   - Run: `go run ./cmd/migrate/main.go up && sqlc generate`
 
 2. **Backend API:**
    - Write handler in `backend/internal/handlers/feature.go`
@@ -178,7 +178,7 @@ docker compose -f backend/docker-compose.yml up -d
 1. Create a new migration file in `backend/migrations/`
 2. Update `backend/sql/schema.sql` to match
 3. Add/update queries in `backend/sql/queries/*.sql`
-4. Run migrations: `goose postgres "$DATABASE_URL" up`
+4. Run migrations: `go run ./cmd/migrate/main.go up`
 5. Regenerate code: `sqlc generate` (from backend directory)
 6. Update handlers to use new queries
 
@@ -257,6 +257,8 @@ docker compose -f backend/docker-compose.yml up -d
 - `VITE_API_BASE_URL` - API base URL (defaults to relative URLs for Vite proxy)
 - `VITE_VAPID_PUBLIC_KEY` - Required for browser push subscriptions
 - `VITE_GOOGLE_CLIENT_ID` - For Google OAuth button
+
+> **Note:** `CORS_ORIGINS` and `DB_MAX_CONNS` are documented above but are not currently implemented in `backend/internal/config/config.go`. They require code changes to take effect.
 
 ## Deployment
 
@@ -344,5 +346,8 @@ See `docs/REFERENCE.md` for complete list. Key routes:
 **Push:**
 - `POST /v1/push/subscribe` - Subscribe to push
 - `DELETE /v1/push/unsubscribe` - Unsubscribe
+
+**OCR:**
+- `POST /v1/ocr` - Perform OCR on receipt image
 
 All authenticated routes require `Authorization: Bearer <token>` header.
