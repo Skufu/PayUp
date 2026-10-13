@@ -255,7 +255,7 @@ curl -I https://your-api.onrender.com/health
 | `CLOUDINARY_*` | Optional | - | Image uploads |
 | `VAPID_*` | Optional | - | Push notifications |
 
-> **Note:** `CORS_ORIGINS` is documented above but requires code changes to `backend/internal/config/config.go` to take effect. The variable is currently not read by the application.
+> **Note:** `CORS_ORIGINS` is read by the API at startup (`backend/internal/middleware/cors.go`). Set it explicitly in production to your deployed frontend origin(s); if unset in production, the API falls back to strict mode.
 
 ### Frontend
 
