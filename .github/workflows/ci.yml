@@ -59,7 +59,7 @@ jobs:
 
       - name: Verify sqlc generated code
         run: |
-          go run github.com/sqlc-dev/sqlc/cmd/sqlc@latest generate -f sqlc.yaml
+          go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate -f sqlc.yaml
           git diff --exit-code || (echo "::error::sqlc generated code is out of date. Run 'sqlc generate' and commit." && exit 1)
 
       - name: Run tests
