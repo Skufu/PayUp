@@ -1,6 +1,13 @@
 # PayUp
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Go](https://img.shields.io/badge/Go-1.24-00ADD8?logo=go&logoColor=white)](go.mod)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](frontend/package.json)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?logo=postgresql&logoColor=white)]()
+
 Split expenses, track balances, settle up.
+
+**Shipped a PWA my friends actually use — 12 real users splitting real expenses.** [pay-up-blond.vercel.app](https://pay-up-blond.vercel.app/)
 
 ---
 
