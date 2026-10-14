@@ -7,6 +7,7 @@ import { NotificationView } from './components/NotificationView'
 import { WalletView } from './components/WalletView'
 import { ActivityFeed } from './components/ActivityFeed'
 import { OfflineIndicator } from './components/OfflineIndicator'
+import { NoGroupsEmptyState } from './components/NoGroupsEmptyState'
 import { SideMenu, SideMenuContent } from './components/modals/SideMenu'
 import { ConfirmDialog } from './components/modals/ConfirmDialog'
 import { ToastProvider } from './components/Toast'
@@ -97,6 +98,8 @@ function PayUpAppInner() {
     queryFn: () => api.listGroups(),
     staleTime: 30 * 1000, // 30 seconds - groups don't change frequently
   })
+
+  const hasNoGroups = !groupsQuery.isLoading && (groupsQuery.data ?? []).length === 0
 
   const effectiveGroupId = currentGroupId ?? groupsQuery.data?.[0]?.id ?? null
 
@@ -471,7 +474,12 @@ function PayUpAppInner() {
           />
         }
       >
-        {activeTab === 'wallet' && (
+        {hasNoGroups ? (
+          <NoGroupsEmptyState
+            onCreateGroup={handleOpenCreateGroup}
+            onJoinGroup={handleOpenJoinGroup}
+          />
+        ) : activeTab === 'wallet' ? (
           <WalletView
             balances={balances}
             currentUser={currentUser}
@@ -483,18 +491,14 @@ function PayUpAppInner() {
             onDeleteExpense={handleDeleteExpense}
             onEditExpense={handleEditExpense}
           />
-        )}
-
-        {activeTab === 'notifications' && (
+        ) : activeTab === 'notifications' ? (
           <NotificationView
             payments={payments}
             currentUser={currentUser}
             activeUsers={activeUsers}
             onReviewPayment={handleReviewPayment}
           />
-        )}
-
-        {activeTab === 'activity' && (
+        ) : (
           <ActivityFeed activities={activitiesQuery.data ?? []} />
         )}
       </AppShell>

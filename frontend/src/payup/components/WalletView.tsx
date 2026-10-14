@@ -86,7 +86,7 @@ export const WalletView = memo(function WalletView({
                   <Smartphone size={24} />
                 </div>
                 <p className="text-gray-400 font-bold mb-1">No expenses yet</p>
-                <p className="text-xs text-gray-600 font-mono">Tap the + button to add one!</p>
+                <p className="text-xs text-gray-600 font-mono">Tap the + button to add your first expense</p>
               </div>
             )}
           </div>

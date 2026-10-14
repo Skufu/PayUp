@@ -24,18 +24,21 @@ export const api = {
   register(email: string, password: string, name: string) {
     return apiRequest<{ user: AuthUser; token: { accessToken: string; refreshToken: string } }>(`/v1/auth/register`, {
       method: 'POST',
+      skipAuth: true,
       body: JSON.stringify({ email, password, name }),
     })
   },
   login(email: string, password: string) {
     return apiRequest<{ user: AuthUser; token: { accessToken: string; refreshToken: string } }>(`/v1/auth/login`, {
       method: 'POST',
+      skipAuth: true,
       body: JSON.stringify({ email, password }),
     })
   },
   googleAuth(idToken: string) {
     return apiRequest<{ user: AuthUser; token: { accessToken: string; refreshToken: string } }>(`/v1/auth/google`, {
       method: 'POST',
+      skipAuth: true,
       body: JSON.stringify({ idToken }),
     })
   },
@@ -47,12 +50,14 @@ export const api = {
   requestPasswordReset(email: string) {
     return apiRequest<{ message: string; resetToken?: string }>(`/v1/auth/reset-request`, {
       method: 'POST',
+      skipAuth: true,
       body: JSON.stringify({ email }),
     })
   },
   resetPassword(token: string, newPassword: string) {
     return apiRequest<{ message: string }>(`/v1/auth/reset`, {
       method: 'POST',
+      skipAuth: true,
       body: JSON.stringify({ token, newPassword }),
     })
   },

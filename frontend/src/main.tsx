@@ -7,6 +7,7 @@ import App from './App.tsx'
 import { AuthProvider } from './payup/auth/AuthProvider'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
+const hasValidGoogleClientId = GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.includes('your-google') && GOOGLE_CLIENT_ID.length > 10
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,12 +43,20 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+    {hasValidGoogleClientId ? (
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </QueryClientProvider>
+      </GoogleOAuthProvider>
+    ) : (
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <App />
         </AuthProvider>
       </QueryClientProvider>
-    </GoogleOAuthProvider>
+    )}
   </StrictMode>,
 )

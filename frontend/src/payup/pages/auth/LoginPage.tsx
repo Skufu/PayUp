@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, Loader2, Lock, Mail } from 'lucide-react'
+import { AlertCircle, ArrowRight, Download, Loader2, Lock, Mail, X } from 'lucide-react'
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 
 import type { ApiError } from '../../api/client'
 import { useAuth } from '../../auth/useAuth'
-import { PWAInstallGuide } from '../../components/PWAInstallGuide'
 import { NetworkBackground } from '../../components/NetworkBackground'
-import { markPWAGuideAsShown, useShouldShowPWAGuide } from '../../pwa/pwaGuide'
+import { useShouldShowPWAGuide } from '../../pwa/pwaGuide'
 
 export function LoginPage() {
   const { state, login, googleLogin } = useAuth()
@@ -28,14 +27,8 @@ export function LoginPage() {
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // PWA Guide state
   const shouldShowPWAGuide = useShouldShowPWAGuide()
-  const [showingPWAGuide, setShowingPWAGuide] = useState(true)
-
-  const handlePWAGuideContinue = useCallback(() => {
-    markPWAGuideAsShown()
-    setShowingPWAGuide(false)
-  }, [])
+  const [pwaBannerDismissed, setPWABannerDismissed] = useState(false)
 
   const handleGoogleSuccess = useCallback(async (response: CredentialResponse) => {
     if (!response.credential) {
@@ -70,11 +63,6 @@ export function LoginPage() {
     }
   }
 
-  // Show PWA install guide on mobile first
-  if (shouldShowPWAGuide && showingPWAGuide) {
-    return <PWAInstallGuide onContinue={handlePWAGuideContinue} />
-  }
-
   return (
     <div className="min-h-screen bg-[#050507] text-[#f0f0f0] flex items-center justify-center px-4 font-mono relative overflow-hidden">
 
@@ -102,6 +90,32 @@ export function LoginPage() {
           >
             <Loader2 className="w-5 h-5 text-[#dfff4f] animate-spin" />
             Checking session...
+          </motion.div>
+        )}
+
+        {shouldShowPWAGuide && !pwaBannerDismissed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-[#dfff4f]/5 border border-[#dfff4f]/20 rounded-xl p-3 mb-6 relative"
+          >
+            <button
+              type="button"
+              onClick={() => setPWABannerDismissed(true)}
+              className="absolute top-2 right-2 p-1 text-gray-500 hover:text-white transition-colors"
+            >
+              <X size={14} />
+            </button>
+            <div className="flex items-center gap-3 pr-6">
+              <div className="w-8 h-8 rounded-lg bg-[#dfff4f]/10 flex items-center justify-center shrink-0">
+                <Download className="w-4 h-4 text-[#dfff4f]" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-white font-medium">Install PayUp for the best experience</p>
+                <p className="text-[10px] text-gray-500">Add to home screen for quick access & notifications</p>
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -180,17 +194,19 @@ export function LoginPage() {
             </div>
           </div>
 
-          <div className="pt-4 flex justify-center">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => setErr('Google sign-in failed')}
-              theme="filled_black"
-              shape="pill"
-              size="large"
-              text="continue_with"
-              width="300"
-            />
-          </div>
+          {import.meta.env.VITE_GOOGLE_CLIENT_ID && !import.meta.env.VITE_GOOGLE_CLIENT_ID.includes('your-google') && (
+            <div className="pt-4 flex justify-center">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setErr('Google sign-in failed')}
+                theme="filled_black"
+                shape="pill"
+                size="large"
+                text="continue_with"
+                width="300"
+              />
+            </div>
+          )}
         </form>
 
         <div className="mt-8 pt-8 border-t border-white/5 text-center">

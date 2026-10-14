@@ -1,14 +1,13 @@
 import { useCallback, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { AlertCircle, ArrowRight, Loader2, Lock, Mail, User } from 'lucide-react'
+import { AlertCircle, ArrowRight, Download, Loader2, Lock, Mail, User, X } from 'lucide-react'
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 
 import type { ApiError } from '../../api/client'
 import { useAuth } from '../../auth/useAuth'
-import { PWAInstallGuide } from '../../components/PWAInstallGuide'
 import { NetworkBackground } from '../../components/NetworkBackground'
-import { markPWAGuideAsShown, useShouldShowPWAGuide } from '../../pwa/pwaGuide'
+import { useShouldShowPWAGuide } from '../../pwa/pwaGuide'
 
 export function RegisterPage() {
   const { register, googleLogin } = useAuth()
@@ -20,14 +19,8 @@ export function RegisterPage() {
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // PWA Guide state
   const shouldShowPWAGuide = useShouldShowPWAGuide()
-  const [showingPWAGuide, setShowingPWAGuide] = useState(true)
-
-  const handlePWAGuideContinue = useCallback(() => {
-    markPWAGuideAsShown()
-    setShowingPWAGuide(false)
-  }, [])
+  const [pwaBannerDismissed, setPWABannerDismissed] = useState(false)
 
   const handleGoogleSuccess = useCallback(async (response: CredentialResponse) => {
     if (!response.credential) {
@@ -62,11 +55,6 @@ export function RegisterPage() {
     }
   }
 
-  // Show PWA install guide on mobile first
-  if (shouldShowPWAGuide && showingPWAGuide) {
-    return <PWAInstallGuide onContinue={handlePWAGuideContinue} />
-  }
-
   return (
     <div className="min-h-screen bg-[#050507] text-[#f0f0f0] flex items-center justify-center px-4 font-mono relative overflow-hidden">
 
@@ -85,6 +73,31 @@ export function RegisterPage() {
           </Link>
           <p className="text-sm text-gray-500 uppercase tracking-widest font-bold">Join the Network</p>
         </div>
+
+        {shouldShowPWAGuide && !pwaBannerDismissed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            className="bg-[#dfff4f]/5 border border-[#dfff4f]/20 rounded-xl p-3 mb-6 relative"
+          >
+            <button
+              type="button"
+              onClick={() => setPWABannerDismissed(true)}
+              className="absolute top-2 right-2 p-1 text-gray-500 hover:text-white transition-colors"
+            >
+              <X size={14} />
+            </button>
+            <div className="flex items-center gap-3 pr-6">
+              <div className="w-8 h-8 rounded-lg bg-[#dfff4f]/10 flex items-center justify-center shrink-0">
+                <Download className="w-4 h-4 text-[#dfff4f]" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-white font-medium">Install PayUp for the best experience</p>
+                <p className="text-[10px] text-gray-500">Add to home screen for quick access & notifications</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {err && (
           <motion.div

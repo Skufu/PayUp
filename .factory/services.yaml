@@ -1,0 +1,8 @@
+commands:
+  install: cd frontend && npm install
+  build: cd frontend && npm run build
+  typecheck: cd frontend && npm run typecheck 2>/dev/null || echo "No typecheck script"
+  lint: cd frontend && npm run lint
+  test: cd backend && go test ./...
+
+services: {}

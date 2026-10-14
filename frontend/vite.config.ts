@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const backendPort = process.env.PORT?.trim() || '8080'
+const proxyTarget = process.env.VITE_API_PROXY_TARGET?.trim() || `http://localhost:${backendPort}`
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
@@ -11,11 +14,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/v1': {
-        target: 'http://localhost:8080',
+        target: proxyTarget,
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:8080',
+        target: proxyTarget,
         changeOrigin: true,
       },
     },

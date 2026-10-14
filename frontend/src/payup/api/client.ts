@@ -12,6 +12,8 @@ export type Tokens = {
   refreshToken: string
 }
 
+type ApiRequestInit = RequestInit & { skipAuth?: boolean }
+
 const ACCESS_TOKEN_KEY = 'payup_access_token'
 const REFRESH_TOKEN_KEY = 'payup_refresh_token'
 
@@ -210,7 +212,7 @@ async function ensureFreshToken(): Promise<Tokens | null> {
 
 async function rawRequest<T>(
   path: string,
-  init: RequestInit & { skipAuth?: boolean } = {},
+  init: ApiRequestInit = {},
 ): Promise<T> {
   const url = `${baseUrl()}${path}`
 
@@ -230,12 +232,13 @@ async function rawRequest<T>(
   return (await res.json()) as T
 }
 
-export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  // Skip proactive refresh for the refresh endpoint itself
+export async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
+  // Skip proactive/reactive refresh for the refresh endpoint itself and public auth flows.
   const isRefreshEndpoint = path.includes('/auth/refresh')
+  const shouldUseAuth = !init.skipAuth && !isRefreshEndpoint
 
   // PROACTIVE REFRESH: Check if token is expiring soon and refresh before request
-  if (!isRefreshEndpoint) {
+  if (shouldUseAuth) {
     try {
       await ensureFreshToken()
     } catch {
@@ -264,7 +267,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       }
 
       // Handle 401 (unauthorized) - REACTIVE REFRESH as fallback
-      if (err?.status === 401 && !isRefreshEndpoint) {
+      if (err?.status === 401 && shouldUseAuth) {
         const tok = loadTokens()
         if (!tok?.refreshToken) {
           clearTokens()
